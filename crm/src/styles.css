@@ -71,16 +71,19 @@ td { padding: 10px; border-bottom: 1px solid var(--line); vertical-align: middle
 .kcard { background: var(--card); border-radius: 9px; padding: 10px; margin-bottom: 8px; box-shadow: var(--sh); border: 1px solid var(--line); cursor: grab; font-size: 13px; }
 .kcard .n { font-weight: 650; } .kcard .m { color: var(--muted); font-size: 12px; margin-top: 3px; display: flex; gap: 6px; flex-wrap: wrap; }
 .kcol.drop { outline: 2px dashed var(--gold); }
-.chat { display: grid; grid-template-columns: 330px 1fr 300px; height: calc(100vh - 63px); }
+.app.fixa { height: 100vh; overflow: hidden; }
+.app.fixa .main { display: flex; flex-direction: column; height: 100vh; overflow: hidden; }
+.chat { display: grid; grid-template-columns: 330px 1fr 300px; flex: 1; min-height: 0; overflow: hidden; }
+.chat > * { min-height: 0; }
 .chat .lst { border-right: 1px solid var(--line); overflow-y: auto; background: var(--card); }
 .chat .lst .f { padding: 12px; border-bottom: 1px solid var(--line); display: flex; flex-direction: column; gap: 8px; position: sticky; top: 0; background: var(--card); z-index: 1; }
 .citem { padding: 12px 14px; border-bottom: 1px solid var(--line); cursor: pointer; display: grid; gap: 4px; }
 .citem:hover { background: #f8fafc; } .citem.on { background: #eef4ff; box-shadow: inset 3px 0 0 var(--navy); }
 .citem .l1 { display: flex; gap: 8px; align-items: center; font-weight: 650; } .citem .l1 .t { margin-left: auto; color: var(--muted); font-weight: 500; font-size: 11px; }
 .citem .l2 { color: var(--muted); font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.thread { display: flex; flex-direction: column; min-width: 0; background: #efeae2; }
+.thread { display: flex; flex-direction: column; min-width: 0; min-height: 0; overflow: hidden; background: #efeae2; }
 .thead { background: var(--card); padding: 12px 16px; border-bottom: 1px solid var(--line); display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
-.msgs { flex: 1; overflow-y: auto; padding: 18px 8%; display: flex; flex-direction: column; gap: 6px; }
+.msgs { flex: 1; min-height: 0; overflow-y: auto; overscroll-behavior: contain; padding: 18px 8%; display: flex; flex-direction: column; gap: 6px; }
 .msg { max-width: 72%; padding: 8px 11px; border-radius: 10px; font-size: 13.5px; line-height: 1.4; white-space: pre-wrap; word-wrap: break-word; box-shadow: 0 1px 1px rgba(0,0,0,.06); }
 .msg.in { align-self: flex-start; background: #fff; } .msg.out { align-self: flex-end; background: #d9fdd3; }
 .msg.humano { background: #fff3c4; } .msg.sistema { align-self: center; background: #e0e7ff; font-size: 12px; }
@@ -107,5 +110,6 @@ td { padding: 10px; border-bottom: 1px solid var(--line); vertical-align: middle
 @media (max-width: 760px) {
   .app { grid-template-columns: 1fr; } .side { position: static; height: auto; flex-direction: row; overflow-x: auto; padding: 8px; } .brand, .side .bottom { display: none; }
   .nav { width: auto; white-space: nowrap; } .g3, .g2 { grid-template-columns: 1fr; } .page { padding: 16px; } .top { padding: 12px 16px; flex-wrap: wrap; }
-  .chat { grid-template-columns: 1fr; height: auto; } .chat .lst { max-height: 40vh; } .msgs { padding: 14px; } .funnel-row { grid-template-columns: 100px 1fr 60px; }
+  .app.fixa, .app.fixa .main { height: auto; overflow: visible; }
+  .chat { grid-template-columns: 1fr; overflow: visible; } .chat .lst { max-height: 40vh; } .thread { height: 75vh; } .msgs { padding: 14px; } .funnel-row { grid-template-columns: 100px 1fr 60px; }
 }

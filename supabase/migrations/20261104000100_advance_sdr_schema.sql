@@ -525,7 +525,7 @@ returns text language sql stable as $$
   from (
     select m.id,
            to_char(m.criado_em at time zone 'America/Maceio', 'DD/MM HH24:MI') || ' · ' ||
-           case m.autor when 'lead' then 'Lead' when 'ia' then 'Você (consultor virtual)'
+           case m.autor when 'lead' then 'Lead' when 'ia' then 'Você'
                         when 'humano' then 'Equipe Advance (humano)' else 'Sistema' end
            || ': ' || public.texto_msg(m) as linha
     from public.mensagens m
@@ -691,8 +691,8 @@ returns jsonb language plpgsql as $$
 begin
   update public.conversas set aguardando_humano = true, modo = 'humano', motivo_handoff = p_motivo, handoff_em = now()
    where id = p_conversa;
-  perform public.criar_alerta('handoff', p_conversa, 'Transferência (' || coalesce(p_motivo,'') || '): ' || coalesce(p_resumo,''));
-  return jsonb_build_object('ok', true, 'orientacao', 'Transferido. Se ainda não avisou o lead, diga em 1 frase que um especialista vai continuar o atendimento.');
+  perform public.criar_alerta('handoff', p_conversa, 'A IA parou de responder e precisa de você (' || coalesce(p_motivo,'') || '): ' || coalesce(p_resumo,''));
+  return jsonb_build_object('ok', true, 'orientacao', 'Transferido. Deixe sua resposta VAZIA: não escreva nada para o lead.');
 end $$;
 
 -- Aviso à equipe SEM tirar a IA da conversa (ex.: enviar contrato do Limpa Nome)

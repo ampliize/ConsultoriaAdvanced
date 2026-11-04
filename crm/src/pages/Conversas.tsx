@@ -23,7 +23,7 @@ export default function Conversas({ ctx, selecionada, selecionar }: { ctx: Ctx; 
   const [filtro, setFiltro] = useState<keyof typeof FILTROS>('todas');
   const [busca, setBusca] = useState('');
   const [msgs, setMsgs] = useState<Mensagem[]>([]);
-  const fim = useRef<HTMLDivElement>(null);
+  const caixa = useRef<HTMLDivElement>(null);
   const pausado = !!ctx.snap.config.sdr_pausado_global?.valor?.pausado;
   const lista = useMemo(() => ctx.snap.conversas.filter(c => {
     const s = statusConversa(c, false, ctx.agora);
@@ -43,7 +43,7 @@ export default function Conversas({ ctx, selecionada, selecionar }: { ctx: Ctx; 
     ctx.api.mensagens(selecionada).then(m => { if (vivo) setMsgs(m); });
     return () => { vivo = false; };
   }, [selecionada, ctx.snap]);
-  useEffect(() => { fim.current?.scrollIntoView({ block: 'end' }); }, [msgs.length, selecionada]);
+  useEffect(() => { const c = caixa.current; if (c) c.scrollTop = c.scrollHeight; }, [msgs.length, selecionada]);
 
   const assumir = async () => { await ctx.api.assumir(conv!.id); ctx.toast('Você assumiu o atendimento. A IA não responde esta conversa até você devolver.'); ctx.recarregar(); };
   const devolver = async () => { await ctx.api.devolver(conv!.id); ctx.toast('Conversa devolvida para a IA'); ctx.recarregar(); };
@@ -77,10 +77,10 @@ export default function Conversas({ ctx, selecionada, selecionar }: { ctx: Ctx; 
               ? <button className="btn ok" onClick={devolver}><Bot size={16} /> Devolver para a IA</button>
               : <button className="btn gold" onClick={assumir}><Hand size={16} /> Assumir atendimento</button>}
           </div>
-          <div className="msgs">
+          <div className="msgs" ref={caixa}>
             {msgs.map(m => (
               <div key={m.id} className={`msg ${m.direcao} ${m.autor}`}>
-                {m.direcao === 'out' && <div className="who">{m.autor === 'ia' ? '🤖 Consultor virtual (IA)' : m.autor === 'humano' ? '👤 Equipe Advance' : 'Sistema'}</div>}
+                {m.direcao === 'out' && <div className="who">{m.autor === 'ia' ? '🤖 SDR IA' : m.autor === 'humano' ? '👤 Equipe Advance' : 'Sistema'}</div>}
                 {m.texto && <div>{m.texto}</div>}
                 {m.tipo === 'audio' && <div className="media"><Mic size={12} /> {m.direcao === 'out' ? 'Áudio com voz clonada' : 'Áudio'}{m.midia_descricao ? `: “${m.midia_descricao}”` : m.direcao === 'out' ? '' : ' (transcrevendo…)'}</div>}
                 {m.tipo === 'image' && <div className="media"><Img size={12} /> {m.midia_descricao || 'Imagem'}</div>}
@@ -88,7 +88,6 @@ export default function Conversas({ ctx, selecionada, selecionar }: { ctx: Ctx; 
                 <div className="meta">{hora(m.criado_em)}{m.status_envio === 'falhou' ? ' · ⚠ falhou' : ''}</div>
               </div>
             ))}
-            <div ref={fim} />
           </div>
           <div className="thead small muted" style={{ borderTop: '1px solid var(--line)', borderBottom: 0 }}>
             Para responder, use o WhatsApp do atendimento (79) 98104-5273. Ao responder por lá, a IA para nesta conversa e volta sozinha {ctx.snap.config.minutos_retorno_humano?.valor ?? 15} min depois da sua última mensagem — ou use “Assumir atendimento” para ela não voltar.

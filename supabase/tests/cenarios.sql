@@ -10,8 +10,8 @@ select origem, etapa from public.leads;
 select public.coletar_lote((select id from conversas), (select min(id) from mensagens)) ->> 'motivo';
 select public.coletar_lote((select id from conversas), (select max(id) from mensagens)) ->> 'texto';
 \echo '3. IA envia e o eco do webhook NÃO é tratado como humano'
-select public.preparar_envio((select id from conversas), 'text', 'Olá Maria! Sou o consultor virtual da Advance.') ->> 'permitido';
-select public.registrar_mensagem_entrada('{"message_id":"E1","telefone":"5579999990001","from_me":true,"tipo":"text","texto":"Olá Maria! Sou o consultor virtual da Advance."}') ->> 'motivo';
+select public.preparar_envio((select id from conversas), 'text', 'Oi Maria! Aqui é da Advance Consultoria.') ->> 'permitido';
+select public.registrar_mensagem_entrada('{"message_id":"E1","telefone":"5579999990001","from_me":true,"tipo":"text","texto":"Oi Maria! Aqui é da Advance Consultoria."}') ->> 'motivo';
 select public.confirmar_envio((select max(id) from mensagens where autor='ia'), 'E1', true);
 select modo, humano_ultima_atividade_em is null as sem_humano, followup_base_em is not null as followup_armado from conversas;
 \echo '4. humano responde pelo número → IA para'

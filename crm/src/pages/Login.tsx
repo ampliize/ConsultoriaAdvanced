@@ -27,7 +27,7 @@ export default function Login({ onDemo, onLogin }: { onDemo: () => void; onLogin
       <div className="box">
         <svg width="40" height="40" viewBox="0 0 32 32"><rect width="32" height="32" rx="8" fill="#0b2545" /><path d="M8 23 16 8l8 15h-4.2L16 15.6 12.2 23z" fill="#d4a24c" /></svg>
         <h2>Advance · CRM do SDR IA</h2>
-        <p>Atendimentos, qualificação e reuniões do consultor virtual.</p>
+        <p>Atendimentos, qualificação e reuniões do SDR da Advance.</p>
         {erro && <div className="err">{erro}</div>}
         {!temKey ? (
           <form onSubmit={e => { e.preventDefault(); if (key.trim().length > 30) { salvarAnonKey(key); setTemKey(true); location.reload(); } else setErro('Cole a anon key (public) do projeto.'); }}>

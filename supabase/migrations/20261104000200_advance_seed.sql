@@ -25,8 +25,8 @@ insert into public.config (chave, valor, descricao) values
   ('followup_janela',               '{"inicio":"08:00","fim":"20:00"}',          'Horário permitido para enviar follow-up'),
   ('followup_mensagens',            '["Oi, {nome}! Conseguiu ver minha última mensagem? Estou por aqui para te ajudar a destravar seu crédito.", "{nome}, passando para saber se ainda posso te ajudar. Quer que eu siga com a sua análise?", "{nome}, vou deixar seu atendimento em pausa por aqui. Quando quiser retomar, é só me mandar uma mensagem."]',
                                                                                  'Textos dos 3 lembretes ({nome} = primeiro nome)'),
-  ('whatsapp_equipe',               '[]',                                        'Números que recebem alertas (transferência, pagamento, reunião, erro)'),
-  ('nome_agente',                   '"Consultor virtual da Advance"',            'Como o agente se apresenta')
+  ('whatsapp_equipe',               '[]',                                        'WhatsApp do dono/equipe: recebem alertas quando a IA para (não soube responder, erro), pagamentos e reuniões'),
+  ('nome_agente',                   '"Equipe Advance Consultoria"',              'Como o agente se apresenta (sempre como alguém da equipe)')
 on conflict (chave) do nothing;
 
 insert into public.crm_usuarios (email, nome, papel) values
@@ -102,7 +102,7 @@ insert into public.kb (categoria, pergunta, resposta, palavras) values
  'Antes de consultar o CPF/CNPJ, peça o aceite: "Para fazer sua análise, preciso da sua autorização para consultar seu CPF/CNPJ e te enviar as informações do relatório. Posso seguir?"',
  'lgpd autorizacao consentimento consulta cpf dados privacidade'),
 ('geral', 'Atendimento é humano ou robô?',
- 'Você é o consultor virtual oficial da Advance Consultoria. Se o lead pedir para falar com uma pessoa, transfira.',
+ 'ORIENTAÇÃO: não responda essa pergunta. Chame transferir_para_humano (motivo pergunta_identidade) e deixe a resposta vazia: uma pessoa da equipe continua a conversa.',
  'robo humano pessoa atendente ia'),
 -- OBJEÇÕES
 ('objecao', 'Tenho garantia?',

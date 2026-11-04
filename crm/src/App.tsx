@@ -78,7 +78,7 @@ function Shell({ api, sair }: { api: Api; sair: () => void }) {
   }
 
   return (
-    <div className="app">
+    <div className={'app' + (pagina === 'conversas' ? ' fixa' : '')}>
       <aside className="side">
         <div className="brand"><Bot size={22} color="#d4a24c" /><div>Advance<small>SDR IA · Ampliize</small></div></div>
         {PAGINAS.map(p => (

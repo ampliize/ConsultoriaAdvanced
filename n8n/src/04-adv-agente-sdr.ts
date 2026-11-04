@@ -168,10 +168,10 @@ const handoff = tool({
     name: 'transferir_para_humano',
     parameters: {
       descriptionType: 'manual',
-      toolDescription: 'Passa a conversa para a equipe da Advance e avisa no WhatsApp deles. Depois disso você fica em silêncio nesta conversa até a equipe responder. Use quando: o lead pede uma pessoa (pedido_lead); dúvida específica fora do roteiro (duvida_especifica); reclamação ou irritação (reclamacao); não entendeu após 2 tentativas (incerteza); falha ao agendar (agendamento).',
+      toolDescription: 'Para de responder nesta conversa e avisa o dono no WhatsApp para ele continuar. Depois de chamar, sua resposta final deve ser VAZIA (não escreva nada para o lead). Use quando: não sabe responder com certeza (incerteza); dúvida específica fora do roteiro (duvida_especifica); o lead pede outra pessoa (pedido_lead); reclamação ou irritação (reclamacao); o lead pergunta se fala com robô/IA (pergunta_identidade); falha ao agendar (agendamento).',
       operation: 'executeQuery',
       query: 'select public.iniciar_handoff($1::uuid, $2, $3) as resultado',
-      options: { queryReplacement: expr("{{ [ $('Recebe lote do lead').item.json.conversa_id, $fromAI('motivo', 'pedido_lead, duvida_especifica, reclamacao, incerteza ou agendamento', 'string'), $fromAI('resumo', 'Resumo para a equipe em 1-2 frases: situação do lead, serviço e o que já foi combinado', 'string') ] }}") }
+      options: { queryReplacement: expr("{{ [ $('Recebe lote do lead').item.json.conversa_id, $fromAI('motivo', 'incerteza, duvida_especifica, pedido_lead, reclamacao, pergunta_identidade ou agendamento', 'string'), $fromAI('resumo', 'Resumo para a equipe em 1-2 frases: situação do lead, serviço e o que já foi combinado', 'string') ] }}") }
     },
     credentials: { postgres: pgCred },
     position: [1440, 560]
@@ -230,7 +230,7 @@ const agente = node({
     onError: 'continueErrorOutput',
     position: [560, 300]
   },
-  output: [{ output: 'Olá, Maria! Sou o consultor virtual da Advance Consultoria. Você quer limpar seu nome ou buscar crédito?' }]
+  output: [{ output: 'Oi, Maria! Aqui é da Advance Consultoria, tudo bem? Você quer limpar seu nome ou buscar crédito?' }]
 });
 
 const registrar = node({
@@ -313,36 +313,7 @@ const falha = node({
   output: [{ r: { ok: true } }]
 });
 
-const avisoLead = node({
-  type: 'n8n-nodes-base.executeWorkflow',
-  version: 1.3,
-  config: {
-    name: 'Avisar lead que um especialista vai seguir',
-    parameters: {
-      workflowId: { __rl: true, mode: 'id', value: 'Lr0ADIxWg4ylzd7s', cachedResultName: 'ADV · WA Enviar' },
-      workflowInputs: {
-        mappingMode: 'defineBelow',
-        value: {
-          conversa_id: expr("{{ $('Recebe lote do lead').item.json.conversa_id }}"),
-          texto: 'Recebi sua mensagem! Um especialista da Advance vai continuar seu atendimento por aqui em instantes.',
-          formato: 'texto',
-          autor: 'sistema'
-        },
-        matchingColumns: [],
-        schema: [
-          { id: 'conversa_id', displayName: 'conversa_id', required: false, defaultMatch: false, display: true, canBeUsedToMatch: true, type: 'string' },
-          { id: 'texto', displayName: 'texto', required: false, defaultMatch: false, display: true, canBeUsedToMatch: true, type: 'string' },
-          { id: 'formato', displayName: 'formato', required: false, defaultMatch: false, display: true, canBeUsedToMatch: true, type: 'string' },
-          { id: 'autor', displayName: 'autor', required: false, defaultMatch: false, display: true, canBeUsedToMatch: true, type: 'string' }
-        ]
-      },
-      options: { waitForSubWorkflow: false }
-    },
-    position: [1120, 420]
-  }
-});
-
-const note = sticky('## ADV · Agente SDR\nCérebro do SDR da Advance (OpenAI). Recebe o lote de mensagens do lead, carrega histórico + ficha do CRM e conduz o roteiro: **saudação → objetivo → qualificação (nome, urgência, LGPD, CPF/CNPJ) → apresentação → link de pagamento → documento → reunião no Meet**.\n\nFerramentas: base de conhecimento, ficha do lead, link de pagamento, pagamento informado, horários, agendar (Meet), transferir, avisar equipe, registrar perda.\n\nSe a IA falhar, a conversa vai para a equipe e o lead recebe um aviso curto.', [entrada, contexto], { color: 6 });
+const note = sticky('## ADV · Agente SDR\nCérebro do SDR da Advance (OpenAI). Recebe o lote de mensagens do lead, carrega histórico + ficha do CRM e conduz o roteiro: **saudação → objetivo → qualificação (nome, urgência, LGPD, CPF/CNPJ) → apresentação → link de pagamento → documento → reunião no Meet**.\n\nFerramentas: base de conhecimento, ficha do lead, link de pagamento, pagamento informado, horários, agendar (Meet), transferir, avisar equipe, registrar perda.\n\nSe não souber responder ou se a IA falhar, ela para de responder nesta conversa (sem avisar o lead) e o dono é notificado no WhatsApp.', [entrada, contexto], { color: 6 });
 
 export default workflow('adv-agente-sdr', 'ADV · Agente SDR')
   .add(entrada)
@@ -350,5 +321,5 @@ export default workflow('adv-agente-sdr', 'ADV · Agente SDR')
   .to(agente)
   .to(registrar)
   .to(temResposta.onTrue(enviar))
-  .add(agente.onError(falha.to(avisoLead)))
+  .add(agente.onError(falha))
   .add(note);

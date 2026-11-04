@@ -38,10 +38,11 @@ ADV · Pagamento Confirmado (webhook do meio de pagamento) · ADV · Erros
 1. **Intervenção humana:** se alguém responde o lead pelo número do atendimento, a IA para **naquela conversa** e só volta **15 min depois da última mensagem do humano** (`minutos_retorno_humano`). As mensagens que o lead mandou nesse intervalo são respondidas pela IA quando ela volta. O eco das mensagens da própria IA é reconhecido e não conta como humano.
 2. **Assumir atendimento (CRM):** botão por conversa. A IA fica fora até alguém clicar em **Devolver para a IA**.
 3. **Emergência:** botão no topo do CRM pausa **todo** o SDR (respostas, follow-ups e retomadas) na hora. Tanto a Ampliize quanto a Advance podem pausar e reativar; fica registrado em `auditoria` e a equipe é avisada no WhatsApp.
-4. **Transferência pela IA:** pedido do lead, dúvida fora do roteiro, reclamação ou falha → a IA avisa o lead, a equipe recebe alerta e a IA fica em silêncio até um humano responder ou devolver.
-5. **Mídia:** áudios do lead são transcritos; imagens são lidas (RG/CNH, comprovante de pagamento, print do Serasa). A IA responde em **áudio com a voz clonada** quando o lead manda áudio (`audio_modo`), e sempre por texto quando há link, valor ou CPF.
-6. **Follow-up:** 2h, 24h e 48h sem resposta (entre 08h e 20h). Depois disso o lead vai para **perdido · sem_resposta** (e é reaberto se voltar a falar).
-7. **Nunca prometer** garantia judicial, prazo de juiz, perdão de dívida ou crédito imediato (prompt + base de conhecimento).
+4. **Quando a IA não sabe responder** (ou dúvida fora do roteiro, pedido de outra pessoa, reclamação, pergunta se é robô, erro do sistema): ela **para de responder sem mandar nada ao lead** e o dono recebe alerta no WhatsApp (`whatsapp_equipe`) e no CRM. Ela só volta quando um humano responder e ficar 15 min sem mensagens, ou quando alguém clicar em *Devolver para a IA*.
+5. **Identidade:** o agente atende como alguém da equipe da Advance e nunca se chama de assistente virtual, robô ou IA. Se o lead perguntar com seriedade se está falando com um robô, ele não responde e passa a conversa para uma pessoa da equipe.
+6. **Mídia:** áudios do lead são transcritos; imagens são lidas (RG/CNH, comprovante de pagamento, print do Serasa). A IA responde em **áudio com a voz clonada** quando o lead manda áudio (`audio_modo`), e sempre por texto quando há link, valor ou CPF.
+7. **Follow-up:** 2h, 24h e 48h sem resposta (entre 08h e 20h). Depois disso o lead vai para **perdido · sem_resposta** (e é reaberto se voltar a falar).
+8. **Nunca prometer** garantia judicial, prazo de juiz, perdão de dívida ou crédito imediato (prompt + base de conhecimento).
 
 ## Ativação (checklist)
 

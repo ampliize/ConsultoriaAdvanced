@@ -12,7 +12,7 @@ const DESQ = ['quer_dinheiro_imediato', 'exige_garantia', 'perdao_divida'];
 
 const CONVERSA_EXEMPLO: [Mensagem['autor'], string, string?][] = [
   ['lead', 'Oi, vi o anúncio. Meu crédito foi negado no banco e não sei por quê'],
-  ['ia', 'Olá! Sou o consultor virtual da Advance Consultoria. Sinto muito pela negativa, isso é mais comum do que parece e tem caminho.\n\nVocê quer entender o motivo da negativa para conseguir crédito, ou já sabe que precisa limpar o nome?'],
+  ['ia', 'Oi! Aqui é da Advance Consultoria, tudo bem? Sinto muito pela negativa, isso é mais comum do que parece e tem caminho.\n\nVocê quer entender o motivo da negativa para conseguir crédito, ou já sabe que precisa limpar o nome?'],
   ['lead', 'Quero entender o motivo, preciso de um financiamento', 'audio'],
   ['ia', 'Entendi! Para eu te orientar melhor, qual é o seu nome completo?'],
   ['lead', 'Maria Souza Lima'],

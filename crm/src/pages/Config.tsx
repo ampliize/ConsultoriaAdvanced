@@ -4,7 +4,7 @@ import type { CrmUsuario } from '../lib/api';
 
 const CAMPOS: { chave: string; nome: string; tipo: 'texto' | 'numero' | 'json' | 'bool' | 'audio' | 'lista'; ajuda?: string }[] = [
   { chave: 'minutos_retorno_humano', nome: 'Minutos para a IA voltar após o humano parar de responder', tipo: 'numero', ajuda: 'Regra de intervenção humana (padrão 15).' },
-  { chave: 'whatsapp_equipe', nome: 'WhatsApp da equipe para alertas', tipo: 'lista', ajuda: 'Um número por linha, com DDD. Recebem transferências, pagamentos informados, reuniões e erros.' },
+  { chave: 'whatsapp_equipe', nome: 'WhatsApp do dono / equipe para alertas', tipo: 'lista', ajuda: 'Um número por linha, com DDD. Recebem aviso quando a IA para de responder (não soube responder, erro, lead pediu pessoa), pagamentos informados e reuniões.' },
   { chave: 'link_pagamento_diagnostico', nome: 'Link de pagamento · Diagnóstico (R$ 67)', tipo: 'texto' },
   { chave: 'link_pagamento_limpa_nome_avista', nome: 'Link de pagamento · Limpa Nome à vista (R$ 797)', tipo: 'texto' },
   { chave: 'link_pagamento_limpa_nome_tap', nome: 'Link de pagamento · Limpa Nome TAP (entrada R$ 350)', tipo: 'texto' },
