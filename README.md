@@ -19,6 +19,11 @@ ADV · Pagamento Confirmado (webhook do meio de pagamento) · ADV · Erros
                  CRM (Vercel) ── Supabase (zixsjyqmzylcopggfjvr)
 ```
 
+## Links
+
+- **CRM:** https://advance-crm-sdr.vercel.app (projeto Vercel `advance-crm-sdr`, deploy automático a partir deste repositório, pasta `crm`)
+- **Fluxos n8n** (tag `advanced`): [ADV · WA Entrada](https://n8n-n8n.dgwpoe.easypanel.host/workflow/Nerz4p4GgDCR0XXI) · [ADV · Agente SDR](https://n8n-n8n.dgwpoe.easypanel.host/workflow/TNvtCkc68qPPPGbv) · [ADV · WA Enviar](https://n8n-n8n.dgwpoe.easypanel.host/workflow/Lr0ADIxWg4ylzd7s) · [ADV · Agendar Meet](https://n8n-n8n.dgwpoe.easypanel.host/workflow/uWwhloeIoHqxdDoF) · [ADV · Rotinas](https://n8n-n8n.dgwpoe.easypanel.host/workflow/7MffEsgySkgk2MV4) · [ADV · Pagamento Confirmado](https://n8n-n8n.dgwpoe.easypanel.host/workflow/8lV0ABGeaGbbkgMp) · [ADV · Erros](https://n8n-n8n.dgwpoe.easypanel.host/workflow/T2lDbAncOYpksYWK)
+
 ## Pastas
 
 | Pasta | O que é |
