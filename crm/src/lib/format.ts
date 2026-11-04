@@ -1,0 +1,11 @@
+export const brl = (v: number | null | undefined) => (v ?? 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+export const num = (v: number) => v.toLocaleString('pt-BR');
+export const pct = (a: number, b: number) => (b ? Math.round((a / b) * 1000) / 10 : 0).toLocaleString('pt-BR') + '%';
+export const dataHora = (s?: string | null) => s ? new Date(s).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit', timeZone: 'America/Maceio' }) : '—';
+export const hora = (s?: string | null) => s ? new Date(s).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', timeZone: 'America/Maceio' }) : '';
+export const telefone = (t: string) => { const d = t.replace(/\D/g, '').replace(/^55/, ''); return d.length >= 10 ? `(${d.slice(0, 2)}) ${d.slice(2, d.length - 4)}-${d.slice(-4)}` : t; };
+export const nomeLead = (l: { nome?: string | null; nome_whatsapp?: string | null; telefone?: string }) => l.nome || l.nome_whatsapp || (l.telefone ? telefone(l.telefone) : 'Sem nome');
+export const duracao = (ms: number) => { if (!isFinite(ms) || ms <= 0) return '—'; const s = Math.round(ms / 1000); if (s < 60) return `${s}s`; const m = Math.round(s / 60); if (m < 60) return `${m} min`; return `${Math.floor(m / 60)}h${String(m % 60).padStart(2, '0')}`; };
+export const relativo = (s?: string | null) => { if (!s) return ''; const d = (Date.now() - new Date(s).getTime()) / 60000; if (d < 1) return 'agora'; if (d < 60) return `${Math.floor(d)} min`; if (d < 1440) return `${Math.floor(d / 60)} h`; return `${Math.floor(d / 1440)} d`; };
+export const SERVICO: Record<string, string> = { diagnostico: 'Diagnóstico', limpa_nome: 'Limpa Nome', indefinido: 'A definir' };
+export const ORIGEM: Record<string, string> = { meta_ads: 'Meta Ads', google_ads: 'Google Ads', trafego_pago: 'Tráfego pago', organico: 'Orgânico', indicacao: 'Indicação' };

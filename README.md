@@ -1,0 +1,68 @@
+# Advance Consultoria · SDR IA (Ampliize)
+
+Agente SDR de IA no WhatsApp para a **Advance Consultoria de Crédito**: faz o primeiro contato com os leads do tráfego pago, qualifica, apresenta o serviço certo (Diagnóstico R$ 67 ou Limpa Nome R$ 797 / TAP), envia o link de pagamento e agenda a reunião com o especialista no **Google Meet**. Inclui um **CRM** com métricas, funil e controles de intervenção humana.
+
+```
+WhatsApp (79) 98104-5273
+   │  Evolution API (webhook MESSAGES_UPSERT + base64)
+   ▼
+ADV · WA Entrada ──► registra no Supabase ──► escuta áudio / lê imagem ──► agrupa mensagens
+   │
+   ▼
+ADV · Agente SDR (OpenAI + ferramentas no banco) ──► ADV · Agendar Meet (Google Calendar)
+   │
+   ▼
+ADV · WA Enviar (texto ou áudio com voz clonada · ElevenLabs)
+ADV · Rotinas (1 min): volta da IA após 15 min sem humano · follow-up 2h/24h/48h · alertas da equipe
+ADV · Pagamento Confirmado (webhook do meio de pagamento) · ADV · Erros
+                      ▲
+                 CRM (Vercel) ── Supabase (zixsjyqmzylcopggfjvr)
+```
+
+## Pastas
+
+| Pasta | O que é |
+|---|---|
+| `supabase/migrations` | Schema completo (tabelas, regras, funções do agente, RLS, realtime) + seed com configurações e base de conhecimento tirada do levantamento comercial |
+| `supabase/tests/cenarios.sql` | Roteiro de testes das regras (eco da IA, humano, 15 min, pausa geral, qualificação, pagamento, agenda, follow-up, RLS) |
+| `n8n/` | Código (Workflow SDK) dos fluxos, prompt do agente e código dos nós Code. Os fluxos já estão criados no n8n com a tag **advanced** |
+| `crm/` | CRM em React + Vite (deploy na Vercel) |
+
+## Regras implementadas
+
+1. **Intervenção humana:** se alguém responde o lead pelo número do atendimento, a IA para **naquela conversa** e só volta **15 min depois da última mensagem do humano** (`minutos_retorno_humano`). As mensagens que o lead mandou nesse intervalo são respondidas pela IA quando ela volta. O eco das mensagens da própria IA é reconhecido e não conta como humano.
+2. **Assumir atendimento (CRM):** botão por conversa. A IA fica fora até alguém clicar em **Devolver para a IA**.
+3. **Emergência:** botão no topo do CRM pausa **todo** o SDR (respostas, follow-ups e retomadas) na hora. Tanto a Ampliize quanto a Advance podem pausar e reativar; fica registrado em `auditoria` e a equipe é avisada no WhatsApp.
+4. **Transferência pela IA:** pedido do lead, dúvida fora do roteiro, reclamação ou falha → a IA avisa o lead, a equipe recebe alerta e a IA fica em silêncio até um humano responder ou devolver.
+5. **Mídia:** áudios do lead são transcritos; imagens são lidas (RG/CNH, comprovante de pagamento, print do Serasa). A IA responde em **áudio com a voz clonada** quando o lead manda áudio (`audio_modo`), e sempre por texto quando há link, valor ou CPF.
+6. **Follow-up:** 2h, 24h e 48h sem resposta (entre 08h e 20h). Depois disso o lead vai para **perdido · sem_resposta** (e é reaberto se voltar a falar).
+7. **Nunca prometer** garantia judicial, prazo de juiz, perdão de dívida ou crédito imediato (prompt + base de conhecimento).
+
+## Ativação (checklist)
+
+1. **Banco:** rode as duas migrations no SQL Editor do projeto `zixsjyqmzylcopggfjvr` (em ordem). Crie os usuários do CRM em *Authentication → Users* com os e-mails cadastrados em `crm_usuarios` e desative o cadastro público.
+2. **Credenciais no n8n** (os fluxos `ADV ·` estão despublicados):
+   - `ADV Supabase Postgres` → conexão Postgres do projeto zixsjyqmzylcopggfjvr (pooler, porta 6543, SSL). **Hoje os nós Postgres foram ligados automaticamente na credencial "Postgres account"; troque para a credencial nova antes de publicar.**
+   - `Evolution API · apikey` (já existe) — confirme que é o servidor onde ficará a instância da Advance.
+   - `OpenAI account` (já existe).
+   - `ElevenLabs (xi-api-key)`, `ADV Google Calendar` (agenda do especialista), `ADV Webhook Pagamento` (header secreto) — novas.
+3. **Configurações no CRM** (*Configurações*): URL e instância da Evolution, ID da voz clonada, links de pagamento, agenda do especialista e números da equipe.
+4. **Evolution:** instância do número (79) 98104-5273 com webhook `https://n8n-n8n.dgwpoe.easypanel.host/webhook/adv-wa-entrada-k7m2p9`, evento `MESSAGES_UPSERT` e **Webhook Base64** ligado.
+5. Publique na ordem: `ADV · Erros` → `ADV · WA Enviar` → `ADV · Agendar Meet` → `ADV · Agente SDR` → `ADV · Rotinas` → `ADV · Pagamento Confirmado` → `ADV · WA Entrada`. Depois defina `ADV · Erros` como *Error Workflow* dos demais.
+6. Meio de pagamento: aponte o webhook para `https://n8n-n8n.dgwpoe.easypanel.host/webhook/adv-pagamento-confirmado-q4w8z1` (envie `telefone` ou `lead_id` e `valor`) ou confirme manualmente no CRM.
+
+## CRM
+
+```bash
+cd crm && npm install && npm run dev
+```
+
+Variáveis (Vercel → Settings → Environment Variables): `VITE_SUPABASE_URL` e `VITE_SUPABASE_ANON_KEY`. Sem a chave, a tela de login pede a anon key uma vez por navegador. O botão **Ver demonstração** abre o CRM com dados fictícios.
+
+## Testar as regras do banco
+
+```bash
+psql "$DATABASE_URL_DE_TESTE" -f supabase/migrations/20261104000100_advance_sdr_schema.sql \
+  -f supabase/migrations/20261104000200_advance_seed.sql -f supabase/tests/cenarios.sql
+```
+(use um banco de teste: o roteiro cria leads fictícios)

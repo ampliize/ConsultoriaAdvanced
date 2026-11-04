@@ -1,0 +1,123 @@
+-- =====================================================================
+-- ADVANCE · dados iniciais: configuração + base de conhecimento
+-- (origem: Levantamento Comercial Advance x Ampliize, 05/10/2026)
+-- =====================================================================
+
+insert into public.config (chave, valor, descricao) values
+  ('sdr_pausado_global',            '{"pausado": false}',                        'Pausa geral de emergência do SDR IA (botão no CRM)'),
+  ('minutos_retorno_humano',        '15',                                        'Minutos sem mensagem do humano para a IA voltar a responder na conversa'),
+  ('janela_agrupamento_segundos',   '8',                                         'Espera o lead terminar de digitar antes de responder'),
+  ('intervalo_minimo_ms',           '1200',                                      'Intervalo mínimo entre mensagens enviadas'),
+  ('evolution_base_url',            '""',                                        'URL da Evolution API (ex.: https://evo.seudominio.com)'),
+  ('evolution_instancia',           '"advance"',                                 'Nome da instância do WhatsApp (79) 98104-5273 na Evolution'),
+  ('audio_modo',                    '"espelhar"',                                'espelhar = responde em áudio quando o lead manda áudio · sempre · nunca'),
+  ('audio_max_caracteres',          '600',                                       'Respostas maiores que isso vão sempre por texto'),
+  ('elevenlabs_voice_id',           '""',                                        'ID da voz clonada (Claudianny ou Matheus) no ElevenLabs'),
+  ('elevenlabs_modelo',             '"eleven_multilingual_v2"',                  'Modelo de voz do ElevenLabs'),
+  ('link_pagamento_diagnostico',    '""',                                        'Link de pagamento do Diagnóstico (R$ 67)'),
+  ('link_pagamento_limpa_nome_avista','""',                                      'Link de pagamento do Limpa Nome à vista (R$ 797)'),
+  ('link_pagamento_limpa_nome_tap', '""',                                        'Link de pagamento da entrada TAP (R$ 350 + 5x R$ 150)'),
+  ('exigir_pagamento_para_agendar', 'true',                                      'Diagnóstico: só agenda reunião após pagamento informado/confirmado'),
+  ('agenda_closer',                 '{"dias":[1,2,3,4,5],"inicio":"09:00","fim":"18:00","almoco":["12:00","13:30"],"duracao_min":30,"antecedencia_horas":2,"dias_a_frente":7,"bloqueios":[]}',
+                                                                                 'Disponibilidade do especialista/closer para reuniões no Meet'),
+  ('google_calendar_id',            '"primary"',                                 'Agenda do Google onde as reuniões são criadas'),
+  ('followup_horas',                '[2, 24, 48]',                               'Régua de follow-up (horas após a última mensagem sem resposta)'),
+  ('followup_janela',               '{"inicio":"08:00","fim":"20:00"}',          'Horário permitido para enviar follow-up'),
+  ('followup_mensagens',            '["Oi, {nome}! Conseguiu ver minha última mensagem? Estou por aqui para te ajudar a destravar seu crédito.", "{nome}, passando para saber se ainda posso te ajudar. Quer que eu siga com a sua análise?", "{nome}, vou deixar seu atendimento em pausa por aqui. Quando quiser retomar, é só me mandar uma mensagem."]',
+                                                                                 'Textos dos 3 lembretes ({nome} = primeiro nome)'),
+  ('whatsapp_equipe',               '[]',                                        'Números que recebem alertas (transferência, pagamento, reunião, erro)'),
+  ('nome_agente',                   '"Consultor virtual da Advance"',            'Como o agente se apresenta')
+on conflict (chave) do nothing;
+
+insert into public.crm_usuarios (email, nome, papel) values
+  ('ampliize@gmail.com', 'Ampliize', 'ampliize'),
+  ('davyevans12@gmail.com', 'Ampliize · Davy', 'ampliize')
+on conflict (email) do nothing;
+
+-- ---------------------------------------------------------------------
+-- BASE DE CONHECIMENTO
+-- ---------------------------------------------------------------------
+insert into public.kb (categoria, pergunta, resposta, palavras) values
+-- DIAGNÓSTICO
+('diagnostico', 'O que é o Diagnóstico de crédito?',
+ 'É uma análise completa do CPF/CNPJ (raio-X): puxamos o relatório do perfil financeiro com os apontamentos no SCR/Bacen, dívidas e score/rating. Depois o cliente tem uma reunião com um especialista (gerente de crédito) que apresenta a situação e indica o melhor caminho para conseguir crédito.',
+ 'raio-x raio x analise perfil financeiro score rating scr bacen negado credito negativa'),
+('diagnostico', 'Quanto custa o Diagnóstico?',
+ 'R$ 67,00 à vista, no PIX ou cartão de crédito.',
+ 'preço valor quanto custa 67 pagamento pix cartao'),
+('diagnostico', 'Passo a passo do Diagnóstico depois de contratar',
+ '1) O cliente envia o documento de identificação para puxarmos o relatório do perfil financeiro. 2) Emitimos o relatório de raio-X do CPF/CNPJ (apontamentos no SCR/Bacen, dívidas e score/rating). 3) Agendamos a reunião com um especialista/gerente de crédito, que apresenta a situação e indica o caminho para conseguir crédito.',
+ 'como funciona etapas processo depois de pagar'),
+('diagnostico', 'Em quanto tempo sai o Diagnóstico?',
+ 'O processamento é rápido: puxamos o relatório e já agendamos a reunião com o especialista.',
+ 'prazo tempo demora quando'),
+('diagnostico', 'O que o Diagnóstico garante / o que pode prometer',
+ 'PODE prometer: mapeamento transparente dos impedimentos de crédito e direcionamento estratégico com um gerente de crédito; entrega do relatório técnico e realização da reunião. NÃO pode prometer: concessão ou liberação direta de empréstimo ou financiamento.',
+ 'garantia promete garante libera emprestimo financiamento'),
+('diagnostico', 'Para quem é o Diagnóstico',
+ 'Pessoas ou empresários que tiveram crédito negado e querem entender o motivo e buscar caminhos de aprovação. Não é para quem quer dinheiro imediato na conta sem passar pela análise do perfil.',
+ 'perfil ideal cliente negado banco'),
+('diagnostico', 'Contrato do Diagnóstico',
+ 'Termo de prestação de serviço/análise técnica com assinatura digital.',
+ 'contrato termo assinatura'),
+-- LIMPA NOME
+('limpa_nome', 'O que é o Limpa Nome?',
+ 'É um serviço jurídico para retirar as restrições do nome (Serasa, SPC, Boa Vista). Entramos com uma ação judicial, enviamos o número do protocolo ao cliente, acompanhamos até o deferimento da liminar e fazemos a baixa das restrições nos órgãos, entregando o documento de baixa ao final.',
+ 'limpar nome negativado serasa spc boa vista restricao restrições sujo'),
+('limpa_nome', 'Quanto custa o Limpa Nome?',
+ 'À vista: R$ 797,00 (PIX ou cartão de crédito). Ou na condição TAP: entrada de R$ 350,00 + 5x de R$ 150,00.',
+ 'preço valor quanto custa 797 parcelado parcela entrada tap'),
+('limpa_nome', 'Passo a passo do Limpa Nome depois de contratar',
+ '1) Envio do documento de identificação completo e assinatura digital do contrato. 2) Protocolo da ação judicial e envio do número do protocolo ao cliente. 3) Acompanhamento até o deferimento da liminar. 4) Baixa nas restrições junto aos órgãos (Serasa, SPC, Boa Vista). 5) Entrega do documento de baixa de restrições confirmando a conclusão.',
+ 'como funciona etapas processo'),
+('limpa_nome', 'Em quanto tempo o nome fica limpo?',
+ 'O prazo estipulado é de 30 dias úteis, e na prática está saindo sempre antes. Não prometa prazo fixo de decisão do juiz.',
+ 'prazo tempo demora quantos dias quando'),
+('limpa_nome', 'O que o Limpa Nome garante / o que pode prometer',
+ 'PODE prometer: envio do protocolo judicial, baixa das restrições apontadas na ação e entrega do documento de baixa. NÃO pode prometer: garantia absoluta (é decisão judicial), prazo fixo do juiz, perdão da dívida original ou aprovação automática de novos créditos.',
+ 'garantia promete garante perdao divida'),
+('limpa_nome', 'Para quem é o Limpa Nome',
+ 'Pessoas físicas ou jurídicas com restrições no SPC/Serasa que precisam limpar o nome com urgência. Não atendemos quem exige garantia em processo judicial ou quem busca o perdão da dívida original.',
+ 'perfil ideal cliente'),
+('limpa_nome', 'Contrato e garantia do Limpa Nome',
+ 'Contrato assinado 100% digitalmente (via WhatsApp/e-mail). Por se tratar de decisão e trâmite judicial, não há garantia de resultado da sentença.',
+ 'contrato assinatura digital garantia'),
+('limpa_nome', 'A dívida some? Perdão da dívida',
+ 'Não. O Limpa Nome retira as restrições do nome nos órgãos de proteção ao crédito; não é perdão da dívida original.',
+ 'divida some apaga perdao quitar'),
+-- AMBOS
+('geral', 'Qual serviço indicar?',
+ 'Se a pessoa sabe que está negativada mas não sabe quantas restrições nem o valor total, indique o Diagnóstico (R$ 67) para ter certeza e confirmar na reunião; depois ela pode avançar para o Limpa Nome. Se ela só quer limpar o nome, vá direto ao Limpa Nome. Se quer entender por que o crédito foi negado, Diagnóstico.',
+ 'qual escolher diferença indicar os dois ambos'),
+('geral', 'Documentos necessários',
+ 'Documento de identificação oficial e completo: RG ou CNH atualizada (pessoa física) ou documento da empresa (pessoa jurídica).',
+ 'documento rg cnh identidade enviar documentos necessários'),
+('geral', 'Formas de pagamento',
+ 'PIX e cartão de crédito. No Limpa Nome também existe a condição TAP (entrada de R$ 350 + 5x de R$ 150). Não há outro desconto ou negociação além disso.',
+ 'pagamento pix cartao boleto desconto negociar parcelar'),
+('geral', 'O que acontece depois do pagamento',
+ 'Pedimos o documento de identificação completo e enviamos o contrato digital para assinatura. No Diagnóstico, em seguida agendamos a reunião com o especialista.',
+ 'depois pagamento proximo passo'),
+('geral', 'Consentimento LGPD',
+ 'Antes de consultar o CPF/CNPJ, peça o aceite: "Para fazer sua análise, preciso da sua autorização para consultar seu CPF/CNPJ e te enviar as informações do relatório. Posso seguir?"',
+ 'lgpd autorizacao consentimento consulta cpf dados privacidade'),
+('geral', 'Atendimento é humano ou robô?',
+ 'Você é o consultor virtual oficial da Advance Consultoria. Se o lead pedir para falar com uma pessoa, transfira.',
+ 'robo humano pessoa atendente ia'),
+-- OBJEÇÕES
+('objecao', 'Tenho garantia?',
+ 'ORIENTAÇÃO: explique com transparência que, por ser um processo judicial, ninguém sério pode garantir a decisão do juiz; o que entregamos é o protocolo oficial do tribunal (ele acompanha o número do processo) e a baixa das restrições apontadas na ação, com o documento de baixa ao final.',
+ 'garantia garante e se nao der certo seguro confiavel golpe'),
+('objecao', 'O crédito sai na hora?',
+ 'ORIENTAÇÃO: explique que o Diagnóstico aponta o caminho e prepara o perfil, mas a concessão depende da política de cada banco. Não prometa liberação.',
+ 'credito sai na hora libera dinheiro emprestimo aprovado'),
+('objecao', 'Está caro / vou pensar',
+ 'ORIENTAÇÃO: reforce o valor (relatório técnico + reunião com gerente de crédito no Diagnóstico; ação judicial + baixa nas restrições no Limpa Nome). No Limpa Nome, ofereça a condição TAP (entrada R$ 350 + 5x R$ 150). Não ofereça outros descontos.',
+ 'caro preço alto vou pensar sem dinheiro desconto'),
+('objecao', 'É golpe? Empresa é confiável?',
+ 'ORIENTAÇÃO: acolha a preocupação, explique que o contrato é assinado digitalmente e que no Limpa Nome o cliente recebe o número do protocolo oficial do processo, que pode consultar no tribunal. Se insistir, ofereça falar com um especialista (transferir).',
+ 'golpe confiavel seguro fraude medo'),
+('regras', 'O que nunca dizer',
+ 'NUNCA prometer garantia em processo judicial, prazo fixo para decisão de juiz, perdão de dívida ou concessão imediata de crédito bancário.',
+ 'proibido nunca prometer')
+on conflict do nothing;
