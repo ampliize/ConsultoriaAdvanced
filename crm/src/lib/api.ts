@@ -1,6 +1,7 @@
 import { sb, anonKey } from './supabase';
 
 export const WHATSAPP_URL = (import.meta.env.VITE_N8N_WHATSAPP_URL as string) || 'https://n8n-n8n.dgwpoe.easypanel.host/webhook/adv-whatsapp-conexao-h3n8v2';
+export const ENVIAR_URL = (import.meta.env.VITE_N8N_ENVIAR_URL as string) || 'https://n8n-n8n.dgwpoe.easypanel.host/webhook/adv-crm-enviar-p6r2t9';
 export interface WhatsappResp { ok: boolean; estado?: string; qr?: string | null; pairing?: string | null; erro?: string | null; detalhe?: string | null; instancia?: string }
 import type { Alerta, ConfigRow, Conversa, Evento, Lead, Mensagem, Reuniao, Etapa } from './types';
 
@@ -29,6 +30,7 @@ export interface Api {
   salvarUsuario(u: CrmUsuario): Promise<void>;
   assinar(onChange: (tabela: string) => void): () => void;
   whatsapp(acao: 'status' | 'conectar' | 'desconectar'): Promise<WhatsappResp>;
+  enviarMensagem(conversaId: string, texto: string): Promise<{ ok: boolean; erro?: string | null }>;
   sair(): Promise<void>;
 }
 
@@ -91,6 +93,18 @@ export function apiSupabase(email: string): Api {
       let j: any = {}; try { j = JSON.parse(txt); } catch { j = { ok: false, erro: txt || `HTTP ${r.status}` }; }
       if (!r.ok && !j.erro) j.erro = `HTTP ${r.status}`;
       return j as WhatsappResp;
+    },
+    async enviarMensagem(conversaId, texto) {
+      const { data } = await c.auth.getSession();
+      const r = await fetch(ENVIAR_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', apikey: anonKey() || '', Authorization: 'Bearer ' + (data.session?.access_token || '') },
+        body: JSON.stringify({ conversa_id: conversaId, texto }),
+      });
+      const txt = await r.text();
+      let j: any = {}; try { j = JSON.parse(txt); } catch { j = { ok: false, erro: txt || `HTTP ${r.status}` }; }
+      if (!r.ok && !j.erro) j.erro = `HTTP ${r.status}`;
+      return j;
     },
     async sair() { await c.auth.signOut(); },
   };

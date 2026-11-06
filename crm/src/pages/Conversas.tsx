@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Hand, Bot, Search, Mic, Image as Img, FileText } from 'lucide-react';
+import { Hand, Bot, Search, Mic, Image as Img, FileText, SendHorizontal } from 'lucide-react';
 import type { Ctx } from '../App';
 import type { Conversa, Mensagem } from '../lib/types';
 import { etapaInfo } from '../lib/types';
@@ -11,7 +11,7 @@ export function statusConversa(c: Conversa, pausado: boolean, agora: number) {
   if (c.assumida_manual) return { cls: 'warn', txt: `Assumida por ${c.assumida_por || 'humano'}` };
   if (c.aguardando_humano) return { cls: 'bad', txt: 'Aguardando humano' };
   if (c.ia_retorna_em && new Date(c.ia_retorna_em).getTime() > agora) {
-    const min = Math.ceil((new Date(c.ia_retorna_em).getTime() - agora) / 60000);
+    const min = Math.max(1, Math.round((new Date(c.ia_retorna_em).getTime() - Date.now()) / 60000));
     return { cls: 'warn', txt: `Humano atendendo · IA volta em ${min} min` };
   }
   return { cls: 'ok', txt: 'IA ativa' };
@@ -24,6 +24,8 @@ export default function Conversas({ ctx, selecionada, selecionar }: { ctx: Ctx; 
   const [busca, setBusca] = useState('');
   const [msgs, setMsgs] = useState<Mensagem[]>([]);
   const caixa = useRef<HTMLDivElement>(null);
+  const [texto, setTexto] = useState('');
+  const [enviando, setEnviando] = useState(false);
   const pausado = !!ctx.snap.config.sdr_pausado_global?.valor?.pausado;
   const lista = useMemo(() => ctx.snap.conversas.filter(c => {
     const s = statusConversa(c, false, ctx.agora);
@@ -47,6 +49,18 @@ export default function Conversas({ ctx, selecionada, selecionar }: { ctx: Ctx; 
 
   const assumir = async () => { await ctx.api.assumir(conv!.id); ctx.toast('Você assumiu o atendimento. A IA não responde esta conversa até você devolver.'); ctx.recarregar(); };
   const devolver = async () => { await ctx.api.devolver(conv!.id); ctx.toast('Conversa devolvida para a IA'); ctx.recarregar(); };
+  const enviar = async () => {
+    const t = texto.trim(); if (!t || !conv || enviando) return;
+    setEnviando(true);
+    try {
+      const r = await ctx.api.enviarMensagem(conv.id, t);
+      if (!r.ok) { ctx.toast('Não enviado: ' + (r.erro || 'erro desconhecido')); return; }
+      setTexto('');
+      setMsgs(await ctx.api.mensagens(conv.id));
+      ctx.recarregar();
+    } catch (e: any) { ctx.toast('Não enviado: ' + e.message); } finally { setEnviando(false); }
+  };
+  useEffect(() => { setTexto(''); }, [selecionada]);
   const st = conv ? statusConversa(conv, pausado, ctx.agora) : null;
 
   return (
@@ -89,8 +103,14 @@ export default function Conversas({ ctx, selecionada, selecionar }: { ctx: Ctx; 
               </div>
             ))}
           </div>
-          <div className="thead small muted" style={{ borderTop: '1px solid var(--line)', borderBottom: 0 }}>
-            Para responder, use o celular conectado ao atendimento. Ao responder por lá, a IA para nesta conversa e volta sozinha {ctx.snap.config.minutos_retorno_humano?.valor ?? 15} min depois da sua última mensagem — ou use “Assumir atendimento” para ela não voltar.
+          <div className="composer">
+            <textarea className="input" rows={2} placeholder="Escreva sua resposta para o lead…  (Enter envia · Shift+Enter quebra linha)" value={texto} disabled={enviando}
+              onChange={e => setTexto(e.target.value)}
+              onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); enviar(); } }} />
+            <button className="btn primary" disabled={enviando || !texto.trim()} onClick={enviar} title="Enviar"><SendHorizontal size={16} /> {enviando ? 'Enviando…' : 'Enviar'}</button>
+          </div>
+          <div className="small muted" style={{ padding: '0 16px 10px', background: 'var(--card)' }}>
+            {conv.assumida_manual ? 'Conversa assumida: a IA só volta quando você clicar em “Devolver para a IA”.' : `Ao responder (aqui ou pelo celular), a IA pausa nesta conversa e volta sozinha ${ctx.snap.config.minutos_retorno_humano?.valor ?? 15} min depois da sua última mensagem. Para ela não voltar, use “Assumir atendimento”.`}
           </div>
         </> : <div className="empty">Selecione uma conversa.</div>}
       </div>

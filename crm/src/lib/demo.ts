@@ -125,6 +125,7 @@ export function apiDemo(): Api {
   const ouvintes = new Set<(t: string) => void>();
   const avisar = (t: string) => ouvintes.forEach(f => f(t));
   const conv = (id: string) => db.conversas.find(c => c.id === id)!;
+  const enviadas: Record<string, Mensagem[]> = {};
   const usuarios: CrmUsuario[] = [{ email: 'ampliize@gmail.com', nome: 'Ampliize', papel: 'ampliize', ativo: true }, { email: 'claudianny@advance.com', nome: 'Claudianny Rodrigues', papel: 'advance', ativo: true }];
   return {
     demo: true,
@@ -137,7 +138,7 @@ export function apiDemo(): Api {
         id: i, conversa_id: id, lead_id: c.lead_id, direcao: m[0] === 'lead' ? 'in' : 'out', autor: m[0], tipo: m[2] || 'text',
         texto: m[2] === 'audio' || m[2] === 'image' ? null : m[1].replace('Maria', (c.nome || c.nome_whatsapp || 'Maria').split(' ')[0]),
         midia_descricao: m[2] ? m[1] : null, status_envio: 'enviado', criado_em: new Date(base + i * 70000).toISOString(),
-      }));
+      } as Mensagem)).concat(enviadas[id] || []);
     },
     async pausaGeral(p) { db.config.sdr_pausado_global.valor = { pausado: p, por: 'demo@advance', em: new Date().toISOString() }; db.conversas.forEach(c => c.ia_ativa = !p && c.modo === 'ia'); avisar('config'); },
     async assumir(id) { Object.assign(conv(id), { assumida_manual: true, assumida_por: 'demo@advance', modo: 'humano', ia_ativa: false, aguardando_humano: false, ia_retorna_em: null }); avisar('conversas'); },
@@ -156,6 +157,14 @@ export function apiDemo(): Api {
       if (acao === 'conectar') { (this as any)._n = ((this as any)._n || 0) + 1; return { ok: true, estado: 'connecting', qr }; }
       if (acao === 'desconectar') { (this as any)._n = 0; return { ok: true, estado: 'close' }; }
       return { ok: true, estado: ((this as any)._n || 0) >= 1 ? 'open' : 'close', instancia: 'advance' };
+    },
+    async enviarMensagem(id, texto) {
+      const c = conv(id);
+      (enviadas[id] ||= []).push({ id: 1000 + (enviadas[id].length), conversa_id: id, lead_id: c.lead_id, direcao: 'out', autor: 'humano', tipo: 'text', texto, midia_descricao: null, status_envio: 'enviado', criado_em: new Date().toISOString() });
+      const ret = new Date(Date.now() + 15 * 60000).toISOString();
+      Object.assign(c, { modo: 'humano', ia_ativa: false, aguardando_humano: false, humano_ultima_atividade_em: new Date().toISOString(), ia_retorna_em: c.assumida_manual ? null : ret, ultima_msg_texto: texto, ultima_msg_autor: 'humano', ultima_msg_em: new Date().toISOString(), nao_lidas: 0 });
+      avisar('mensagens');
+      return { ok: true };
     },
     async sair() { /* demo */ },
   };
