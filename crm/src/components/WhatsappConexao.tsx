@@ -24,7 +24,7 @@ export default function WhatsappConexao({ ctx }: { ctx: Ctx }) {
     if (!/^https?:\/\//.test(url.trim())) { setErro('A URL precisa começar com https://'); return; }
     setOcupado(true);
     try {
-      await ctx.api.salvarConfig('evolution_base_url', url.trim().replace(/\/+$/, ''));
+      await ctx.api.salvarConfig('evolution_base_url', url.trim().replace(/\/+$/, '').replace(/\/manager$/i, ''));
       await ctx.api.salvarConfig('evolution_instancia', inst.trim() || 'advance');
       ctx.toast('Evolution configurada'); ctx.recarregar(); setErro(''); await status();
     } catch (e: any) { setErro(e.message); } finally { setOcupado(false); }
