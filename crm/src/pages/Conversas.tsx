@@ -90,7 +90,7 @@ export default function Conversas({ ctx, selecionada, selecionar }: { ctx: Ctx; 
             ))}
           </div>
           <div className="thead small muted" style={{ borderTop: '1px solid var(--line)', borderBottom: 0 }}>
-            Para responder, use o WhatsApp do atendimento (79) 98104-5273. Ao responder por lá, a IA para nesta conversa e volta sozinha {ctx.snap.config.minutos_retorno_humano?.valor ?? 15} min depois da sua última mensagem — ou use “Assumir atendimento” para ela não voltar.
+            Para responder, use o celular conectado ao atendimento. Ao responder por lá, a IA para nesta conversa e volta sozinha {ctx.snap.config.minutos_retorno_humano?.valor ?? 15} min depois da sua última mensagem — ou use “Assumir atendimento” para ela não voltar.
           </div>
         </> : <div className="empty">Selecione uma conversa.</div>}
       </div>

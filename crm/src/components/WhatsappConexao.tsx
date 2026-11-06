@@ -66,7 +66,7 @@ export default function WhatsappConexao({ ctx }: { ctx: Ctx }) {
       <div className="row wrap" style={{ alignItems: 'flex-start', gap: 20 }}>
         <div style={{ flex: '1 1 260px' }}>
           <p className="small muted" style={{ marginTop: 0 }}>
-            Número do atendimento: <b>(79) 98104-5273</b>. Para conectar: clique em <b>Gerar QR Code</b>, abra o WhatsApp desse celular → <b>Aparelhos conectados</b> → <b>Conectar um aparelho</b> e aponte a câmera para o código.
+            Conecte o celular que vai atender os leads (qualquer número de WhatsApp). Clique em <b>Gerar QR Code</b>, abra o WhatsApp desse celular → <b>Aparelhos conectados</b> → <b>Conectar um aparelho</b> e aponte a câmera para o código.
           </p>
           <div className="row wrap">
             {estado !== 'open' && <button className="btn primary" disabled={ocupado} onClick={conectar}><QrCode size={16} /> {qr ? 'Gerar novo QR Code' : 'Gerar QR Code'}</button>}

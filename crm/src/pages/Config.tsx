@@ -2,6 +2,8 @@ import { useEffect, useState } from 'react';
 import type { Ctx } from '../App';
 import type { CrmUsuario } from '../lib/api';
 import WhatsappConexao from '../components/WhatsappConexao';
+import AgendaEditor from '../components/AgendaEditor';
+import FollowupEditor from '../components/FollowupEditor';
 
 const CAMPOS: { chave: string; nome: string; tipo: 'texto' | 'numero' | 'json' | 'bool' | 'audio' | 'lista'; ajuda?: string }[] = [
   { chave: 'minutos_retorno_humano', nome: 'Minutos para a IA voltar após o humano parar de responder', tipo: 'numero', ajuda: 'Regra de intervenção humana (padrão 15).' },
@@ -12,13 +14,6 @@ const CAMPOS: { chave: string; nome: string; tipo: 'texto' | 'numero' | 'json' |
   { chave: 'exigir_pagamento_para_agendar', nome: 'Diagnóstico: só agendar reunião depois do pagamento', tipo: 'bool' },
   { chave: 'audio_modo', nome: 'Respostas em áudio (voz clonada)', tipo: 'audio' },
   { chave: 'elevenlabs_voice_id', nome: 'ID da voz clonada no ElevenLabs (Claudianny / Matheus)', tipo: 'texto' },
-  { chave: 'agenda_closer', nome: 'Agenda do especialista (reuniões no Meet)', tipo: 'json', ajuda: 'dias: 1=seg … 7=dom · horários de Aracaju · bloqueios: ["2026-12-24"]' },
-  { chave: 'google_calendar_id', nome: 'ID da agenda Google', tipo: 'texto' },
-  { chave: 'followup_horas', nome: 'Régua de follow-up (horas)', tipo: 'json' },
-  { chave: 'followup_mensagens', nome: 'Mensagens de follow-up ({nome} = primeiro nome)', tipo: 'json' },
-  { chave: 'followup_janela', nome: 'Horário permitido para follow-up', tipo: 'json' },
-  { chave: 'evolution_base_url', nome: 'URL da Evolution API', tipo: 'texto' },
-  { chave: 'evolution_instancia', nome: 'Instância do WhatsApp na Evolution', tipo: 'texto' },
 ];
 
 function Campo({ ctx, c }: { ctx: Ctx; c: typeof CAMPOS[number] }) {
@@ -59,14 +54,10 @@ export default function Config({ ctx }: { ctx: Ctx }) {
     <div className="page">
       <WhatsappConexao ctx={ctx} />
       <div className="grid g2">
-        <div className="card">
-          <h3>Regras e integrações do SDR</h3>
-          {CAMPOS.slice(0, 8).map(c => <Campo key={c.chave} ctx={ctx} c={c} />)}
-        </div>
         <div>
           <div className="card">
-            <h3>Agenda, follow-up e WhatsApp</h3>
-            {CAMPOS.slice(8).map(c => <Campo key={c.chave} ctx={ctx} c={c} />)}
+            <h3>Regras e integrações do SDR</h3>
+            {CAMPOS.map(c => <Campo key={c.chave} ctx={ctx} c={c} />)}
           </div>
           <div className="card" style={{ marginTop: 14 }}>
             <h3>Quem acessa o CRM</h3>
@@ -82,6 +73,10 @@ export default function Config({ ctx }: { ctx: Ctx }) {
               <button className="btn primary sm" onClick={async () => { if (!novo.email) return; await ctx.api.salvarUsuario({ ...novo, ativo: true }); setNovo({ email: '', nome: '', papel: 'advance' }); carregar(); }}>Adicionar</button>
             </div>
           </div>
+        </div>
+        <div>
+          <AgendaEditor ctx={ctx} />
+          <FollowupEditor ctx={ctx} />
         </div>
       </div>
     </div>
