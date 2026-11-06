@@ -1,4 +1,7 @@
-import { sb } from './supabase';
+import { sb, anonKey } from './supabase';
+
+export const WHATSAPP_URL = (import.meta.env.VITE_N8N_WHATSAPP_URL as string) || 'https://n8n-n8n.dgwpoe.easypanel.host/webhook/adv-whatsapp-conexao-h3n8v2';
+export interface WhatsappResp { ok: boolean; estado?: string; qr?: string | null; pairing?: string | null; erro?: string | null; detalhe?: string | null; instancia?: string }
 import type { Alerta, ConfigRow, Conversa, Evento, Lead, Mensagem, Reuniao, Etapa } from './types';
 
 export interface MsgResumo { autor: string; criado_em: string; conversa_id: string; direcao: string }
@@ -25,6 +28,7 @@ export interface Api {
   usuarios(): Promise<CrmUsuario[]>;
   salvarUsuario(u: CrmUsuario): Promise<void>;
   assinar(onChange: (tabela: string) => void): () => void;
+  whatsapp(acao: 'status' | 'conectar' | 'desconectar'): Promise<WhatsappResp>;
   sair(): Promise<void>;
 }
 
@@ -75,6 +79,18 @@ export function apiSupabase(email: string): Api {
         ch.on('postgres_changes', { event: '*', schema: 'public', table: t }, () => onChange(t)));
       ch.subscribe();
       return () => { c.removeChannel(ch); };
+    },
+    async whatsapp(acao) {
+      const { data } = await c.auth.getSession();
+      const r = await fetch(WHATSAPP_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', apikey: anonKey() || '', Authorization: 'Bearer ' + (data.session?.access_token || '') },
+        body: JSON.stringify({ acao }),
+      });
+      const txt = await r.text();
+      let j: any = {}; try { j = JSON.parse(txt); } catch { j = { ok: false, erro: txt || `HTTP ${r.status}` }; }
+      if (!r.ok && !j.erro) j.erro = `HTTP ${r.status}`;
+      return j as WhatsappResp;
     },
     async sair() { await c.auth.signOut(); },
   };

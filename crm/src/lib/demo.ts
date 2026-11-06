@@ -151,6 +151,12 @@ export function apiDemo(): Api {
     async usuarios() { return usuarios; },
     async salvarUsuario(u) { const i = usuarios.findIndex(x => x.email === u.email); if (i >= 0) usuarios[i] = u; else usuarios.push(u); },
     assinar(f) { ouvintes.add(f); return () => ouvintes.delete(f); },
+    async whatsapp(acao) {
+      const qr = 'data:image/svg+xml;utf8,' + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 29 29" shape-rendering="crispEdges"><rect width="29" height="29" fill="#fff"/>' + Array.from({ length: 300 }, (_, i) => { const x = (i * 7919) % 25 + 2, y = (i * 104729) % 25 + 2; return `<rect x="${x}" y="${y}" width="1" height="1"/>`; }).join('') + '<path d="M2 2h7v7H2zM20 2h7v7h-7zM2 20h7v7H2z" fill="none" stroke="#000"/></svg>');
+      if (acao === 'conectar') { (this as any)._n = ((this as any)._n || 0) + 1; return { ok: true, estado: 'connecting', qr }; }
+      if (acao === 'desconectar') { (this as any)._n = 0; return { ok: true, estado: 'close' }; }
+      return { ok: true, estado: ((this as any)._n || 0) >= 1 ? 'open' : 'close', instancia: 'advance' };
+    },
     async sair() { /* demo */ },
   };
 }

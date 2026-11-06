@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import type { Ctx } from '../App';
 import type { CrmUsuario } from '../lib/api';
+import WhatsappConexao from '../components/WhatsappConexao';
 
 const CAMPOS: { chave: string; nome: string; tipo: 'texto' | 'numero' | 'json' | 'bool' | 'audio' | 'lista'; ajuda?: string }[] = [
   { chave: 'minutos_retorno_humano', nome: 'Minutos para a IA voltar após o humano parar de responder', tipo: 'numero', ajuda: 'Regra de intervenção humana (padrão 15).' },
@@ -56,6 +57,7 @@ export default function Config({ ctx }: { ctx: Ctx }) {
   useEffect(() => { carregar(); }, []);
   return (
     <div className="page">
+      <WhatsappConexao ctx={ctx} />
       <div className="grid g2">
         <div className="card">
           <h3>Regras e integrações do SDR</h3>
