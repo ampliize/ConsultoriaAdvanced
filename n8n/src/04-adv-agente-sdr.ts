@@ -89,7 +89,7 @@ const pagamento = tool({
     name: 'gerar_link_pagamento',
     parameters: {
       descriptionType: 'manual',
-      toolDescription: 'Retorna o link de pagamento oficial e a condição (valor) para o serviço escolhido e move o lead para PROPOSTA. Chame quando o lead aceitar contratar. forma: avista ou tap (tap só existe no limpa_nome: entrada R$ 350 + 5x R$ 150). Se ok=false, siga a orientacao e NUNCA invente link.',
+      toolDescription: 'Retorna o link de pagamento oficial e a condição (valor) para o serviço escolhido e move o lead para PROPOSTA. Chame quando o lead aceitar contratar. forma: avista ou tap (tap só existe no limpa_nome: entrada R$ 250 + 5x R$ 150). Se ok=false, siga a orientacao e NUNCA invente link.',
       operation: 'executeQuery',
       query: 'select public.link_pagamento($1::uuid, $2, $3) as resultado',
       options: { queryReplacement: expr("{{ [ $('Recebe lote do lead').item.json.conversa_id, $fromAI('servico', 'diagnostico ou limpa_nome', 'string'), $fromAI('forma', 'avista ou tap', 'string') ] }}") }

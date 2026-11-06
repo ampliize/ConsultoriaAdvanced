@@ -57,7 +57,7 @@ function gerar(): Snapshot {
       eventos.push({ id: evId++, lead_id: id, etapa_de: FUNIL[alvo], etapa_para: etapa, motivo, por: 'ia', criado_em: em }); t[etapa] = em;
     }
     const pago = alvo >= 4;
-    const valor = servico === 'diagnostico' ? 67 : rnd() < 0.6 ? 797 : 1100;
+    const valor = servico === 'diagnostico' ? 67 : rnd() < 0.6 ? 797 : 1000;
     const tel = '55799' + String(81000000 + Math.floor(rnd() * 9999999)).padStart(8, '0');
     const respMs = Math.floor(rnd() * 25000) + 3000;
     leads.push({
@@ -65,7 +65,7 @@ function gerar(): Snapshot {
       servico: alvo >= 1 ? servico as any : 'indefinido', objetivo: servico === 'diagnostico' ? 'entender_negativa' : 'limpar_nome',
       urgencia: alvo >= 2 ? pick(['alta', 'alta', 'media', 'baixa']) as any : null, etapa, motivo_perda: motivo,
       origem: rnd() < 0.7 ? 'meta_ads' : 'google_ads', anuncio: { titulo: servico === 'diagnostico' ? 'Crédito negado? Descubra o motivo' : 'Limpe seu nome em 30 dias' },
-      consentimento_lgpd_em: alvo >= 2 ? t.qualificado! : null, forma_pagamento: pago ? (valor === 1100 ? 'tap' : 'avista') : null,
+      consentimento_lgpd_em: alvo >= 2 ? t.qualificado! : null, forma_pagamento: pago ? (valor === 1000 ? 'tap' : 'avista') : null,
       valor_previsto: alvo >= 3 ? valor : null, valor_venda: pago ? valor : null,
       pagamento_status: pago ? 'confirmado' : alvo >= 3 ? 'link_enviado' : 'nenhum', documento_recebido: alvo >= 5, contrato_assinado: alvo >= 6 && servico === 'limpa_nome',
       resumo: servico === 'diagnostico' ? 'Crédito negado, quer entender o motivo e conseguir financiamento.' : 'Negativado no Serasa, precisa limpar o nome com urgência.',

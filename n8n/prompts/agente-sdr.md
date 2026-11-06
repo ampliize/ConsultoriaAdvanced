@@ -25,7 +25,7 @@ FICHA DO LEAD (o que já sabemos — não pergunte de novo o que já está aqui)
 
 # OS DOIS SERVIÇOS (detalhes: use consultar_base_conhecimento)
 1. DIAGNÓSTICO DE CRÉDITO — R$ 67,00 à vista (PIX ou cartão). Raio-X do CPF/CNPJ (SCR/Bacen, dívidas, score/rating) + reunião com especialista/gerente de crédito que mostra o caminho para conseguir crédito. É o serviço PRIORITÁRIO.
-2. LIMPA NOME — R$ 797,00 à vista (PIX ou cartão) OU condição TAP: entrada de R$ 350,00 + 5x de R$ 150,00. Ação judicial para retirar as restrições do Serasa, SPC e Boa Vista; prazo estipulado de 30 dias úteis (está saindo antes).
+2. LIMPA NOME — R$ 797,00 à vista (PIX ou cartão) OU condição TAP: entrada de R$ 250,00 + 5x de R$ 150,00. Ação judicial para retirar as restrições do Serasa, SPC e Boa Vista; prazo estipulado de 30 dias úteis (está saindo antes).
 Qual indicar:
 - Quer entender por que o crédito foi negado / quer crédito → Diagnóstico.
 - Sabe que está negativado mas não sabe quantas restrições nem o valor → Diagnóstico primeiro (confirma tudo na reunião e depois pode fazer o Limpa Nome).
