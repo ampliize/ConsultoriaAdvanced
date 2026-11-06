@@ -18,6 +18,17 @@ export default function WhatsappConexao({ ctx }: { ctx: Ctx }) {
   const [erro, setErro] = useState('');
   const [ocupado, setOcupado] = useState(false);
   const [segundos, setSegundos] = useState(0);
+  const [url, setUrl] = useState<string>(ctx.snap.config.evolution_base_url?.valor || '');
+  const [inst, setInst] = useState<string>(ctx.snap.config.evolution_instancia?.valor || 'advance');
+  const salvarEvo = async () => {
+    if (!/^https?:\/\//.test(url.trim())) { setErro('A URL precisa começar com https://'); return; }
+    setOcupado(true);
+    try {
+      await ctx.api.salvarConfig('evolution_base_url', url.trim().replace(/\/+$/, ''));
+      await ctx.api.salvarConfig('evolution_instancia', inst.trim() || 'advance');
+      ctx.toast('Evolution configurada'); ctx.recarregar(); setErro(''); await status();
+    } catch (e: any) { setErro(e.message); } finally { setOcupado(false); }
+  };
   const timers = useRef<any[]>([]);
   const limpar = () => { timers.current.forEach(clearInterval); timers.current = []; };
 
@@ -62,7 +73,14 @@ export default function WhatsappConexao({ ctx }: { ctx: Ctx }) {
             <button className="btn" disabled={ocupado} onClick={status}><RefreshCw size={15} /> Atualizar status</button>
             {estado === 'open' && <button className="btn danger" disabled={ocupado} onClick={desconectar}><Unplug size={15} /> Desconectar</button>}
           </div>
-          {erro && <div className="err" style={{ marginTop: 10 }}>{erro}</div>}
+          {(estado === 'sem_config' || estado === 'desconhecido' || estado === 'inexistente') && (
+            <div className="row wrap" style={{ marginTop: 12, alignItems: 'flex-end' }}>
+              <div className="field" style={{ flex: '2 1 260px', margin: 0 }}><label>URL da Evolution API</label><input className="input" placeholder="https://evolution.seudominio.com" value={url} onChange={e => setUrl(e.target.value)} /></div>
+              <div className="field" style={{ flex: '1 1 140px', margin: 0 }}><label>Nome da instância</label><input className="input" value={inst} onChange={e => setInst(e.target.value)} /></div>
+              <button className="btn primary" disabled={ocupado} onClick={salvarEvo}>Salvar</button>
+            </div>
+          )}
+          {erro && estado !== 'sem_config' && <div className="err" style={{ marginTop: 10 }}>{erro}</div>}
           {estado === 'open' && <p className="small" style={{ color: 'var(--ok)', fontWeight: 600 }}>WhatsApp conectado. As mensagens dos leads já chegam ao SDR.</p>}
         </div>
         {qr && estado !== 'open' && (
