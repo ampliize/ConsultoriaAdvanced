@@ -48,6 +48,9 @@ select count(*) as horario_some_da_lista from jsonb_array_elements(public.horari
 \echo '10. pagamento confirmado gera mensagem de sistema para IA'
 select public.confirmar_pagamento((select id from leads), 67, 'avista') ->> 'ok';
 select etapa, pagamento_status, valor_venda from leads;
+\echo '10b. segundo aviso do mesmo pagamento (PAYMENT_RECEIVED) não repete a mensagem'
+select public.confirmar_pagamento((select id from leads), 67, 'avista') ->> 'ja_confirmado' as ja_confirmado;
+select count(*) as msgs_pagamento from mensagens where texto like '[SISTEMA] Pagamento%';
 \echo '11. follow-up 2h / 24h / 48h e perda por falta de resposta'
 insert into leads (telefone, nome) values ('5579999990002', 'João Pedro');
 insert into conversas (lead_id, telefone) select id, telefone from leads where telefone = '5579999990002';
