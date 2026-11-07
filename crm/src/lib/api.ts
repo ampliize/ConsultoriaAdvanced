@@ -3,13 +3,15 @@ import { sb, anonKey } from './supabase';
 export const WHATSAPP_URL = (import.meta.env.VITE_N8N_WHATSAPP_URL as string) || 'https://n8n-n8n.dgwpoe.easypanel.host/webhook/adv-whatsapp-conexao-h3n8v2';
 export const ENVIAR_URL = (import.meta.env.VITE_N8N_ENVIAR_URL as string) || 'https://n8n-n8n.dgwpoe.easypanel.host/webhook/adv-crm-enviar-p6r2t9';
 export interface WhatsappResp { ok: boolean; estado?: string; qr?: string | null; pairing?: string | null; erro?: string | null; detalhe?: string | null; instancia?: string }
-import type { Alerta, ConfigRow, Conversa, Evento, Lead, Mensagem, Reuniao, Etapa } from './types';
+import type { Alerta, ConfigRow, Conversa, Evento, Lead, Mensagem, Reuniao, Etapa, Contrato, Cobranca, Comissao, Notificacao } from './types';
 
 export interface MsgResumo { autor: string; criado_em: string; conversa_id: string; direcao: string }
 export interface Snapshot {
   leads: Lead[]; conversas: Conversa[]; reunioes: Reuniao[]; eventos: Evento[]; alertas: Alerta[];
   config: Record<string, ConfigRow>; mensagens: MsgResumo[];
+  contratos: Contrato[]; cobrancas: Cobranca[]; comissoes: Comissao[]; notificacoes: Notificacao[];
 }
+export interface Resultado { ok: boolean; erro?: string; [k: string]: any }
 export interface CrmUsuario { email: string; nome: string | null; papel: string; ativo: boolean }
 
 export interface Api {
@@ -31,10 +33,18 @@ export interface Api {
   assinar(onChange: (tabela: string) => void): () => void;
   whatsapp(acao: 'status' | 'conectar' | 'desconectar'): Promise<WhatsappResp>;
   enviarMensagem(conversaId: string, texto: string): Promise<{ ok: boolean; erro?: string | null }>;
+  criarContrato(leadId: string, servico: string, modalidade: string): Promise<Resultado>;
+  quitar(contratoId: string, desconto: number, motivo: string): Promise<Resultado>;
+  andamento(contratoId: string, etapa: string, detalhe: string, enviar: boolean): Promise<Resultado>;
+  reenviarLink(cobrancaId: string): Promise<Resultado>;
   sair(): Promise<void>;
 }
 
 const check = (r: { error: any }) => { if (r.error) throw new Error(r.error.message || String(r.error)); };
+// numeric do Postgres chega como texto: converte os campos de valor
+const NUM = ['valor', 'valor_total', 'pago', 'saldo_devedor', 'vencido', 'valor_pago', 'valor_liquido', 'valor_estornado', 'base', 'percentual', 'desconto_quitacao', 'pagamentos_feitos', 'pagamentos_total'];
+const n = <T,>(o: T): T => { const x: any = { ...o }; for (const k of NUM) if (x[k] != null) x[k] = Number(x[k]); return x; };
+const rpc = async (c: any, nome: string, args: any) => { const r = await c.rpc(nome, args); check(r); return (r.data || { ok: false }) as Resultado; };
 
 export function apiSupabase(email: string): Api {
   const c = sb();
@@ -43,7 +53,7 @@ export function apiSupabase(email: string): Api {
     email: () => email,
     async carregar(desde) {
       const desdeQ = desde || '2000-01-01';
-      const [leads, conversas, reunioes, eventos, alertas, config, mensagens] = await Promise.all([
+      const [leads, conversas, reunioes, eventos, alertas, config, mensagens, contratos, cobrancas, comissoes, notificacoes] = await Promise.all([
         c.from('leads').select('*').order('criado_em', { ascending: false }).limit(5000),
         c.from('vw_conversas').select('*').order('ultima_msg_em', { ascending: false, nullsFirst: false }).limit(1000),
         c.from('reunioes').select('*').order('inicio', { ascending: true }).limit(2000),
@@ -51,12 +61,18 @@ export function apiSupabase(email: string): Api {
         c.from('alertas').select('*').order('criado_em', { ascending: false }).limit(200),
         c.from('config').select('*'),
         c.from('mensagens').select('autor,criado_em,conversa_id,direcao').gte('criado_em', desdeQ).limit(50000),
+        c.from('vw_contratos').select('*').order('criado_em', { ascending: false }).limit(5000),
+        c.from('cobrancas').select('*').order('numero').limit(30000),
+        c.from('comissoes').select('*').limit(60000),
+        c.from('notificacoes').select('*').order('criado_em', { ascending: false }).limit(3000),
       ]);
-      [leads, conversas, reunioes, eventos, alertas, config, mensagens].forEach(check);
+      [leads, conversas, reunioes, eventos, alertas, config, mensagens, contratos, cobrancas, comissoes, notificacoes].forEach(check);
       return {
         leads: leads.data as Lead[], conversas: conversas.data as Conversa[], reunioes: reunioes.data as Reuniao[],
         eventos: eventos.data as Evento[], alertas: alertas.data as Alerta[], mensagens: mensagens.data as MsgResumo[],
         config: Object.fromEntries((config.data as ConfigRow[]).map(r => [r.chave, r])),
+        contratos: (contratos.data as Contrato[]).map(n), cobrancas: (cobrancas.data as Cobranca[]).map(n),
+        comissoes: (comissoes.data as Comissao[]).map(n), notificacoes: notificacoes.data as Notificacao[],
       };
     },
     async mensagens(id) {
@@ -77,7 +93,7 @@ export function apiSupabase(email: string): Api {
     async salvarUsuario(u) { check(await c.from('crm_usuarios').upsert({ ...u, email: u.email.toLowerCase().trim() })); },
     assinar(onChange) {
       const ch = c.channel('crm-advance');
-      ['mensagens', 'conversas', 'leads', 'config', 'alertas'].forEach(t =>
+      ['mensagens', 'conversas', 'leads', 'config', 'alertas', 'contratos', 'cobrancas', 'notificacoes'].forEach(t =>
         ch.on('postgres_changes', { event: '*', schema: 'public', table: t }, () => onChange(t)));
       ch.subscribe();
       return () => { c.removeChannel(ch); };
@@ -106,6 +122,10 @@ export function apiSupabase(email: string): Api {
       if (!r.ok && !j.erro) j.erro = `HTTP ${r.status}`;
       return j;
     },
+    criarContrato: (lead, servico, modalidade) => rpc(c, 'crm_criar_contrato', { p_lead: lead, p_servico: servico, p_modalidade: modalidade }),
+    quitar: (id, desconto, motivo) => rpc(c, 'crm_quitar_contrato', { p_contrato: id, p_desconto: desconto, p_motivo: motivo || null }),
+    andamento: (id, etapa, detalhe, enviar) => rpc(c, 'crm_andamento_processo', { p_contrato: id, p_etapa: etapa, p_detalhe: detalhe || null, p_enviar: enviar }),
+    reenviarLink: (id) => rpc(c, 'crm_reenviar_link', { p_cobranca: id }),
     async sair() { await c.auth.signOut(); },
   };
 }

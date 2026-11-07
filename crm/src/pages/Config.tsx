@@ -4,13 +4,15 @@ import type { CrmUsuario } from '../lib/api';
 import WhatsappConexao from '../components/WhatsappConexao';
 import AgendaEditor from '../components/AgendaEditor';
 import FollowupEditor from '../components/FollowupEditor';
+import FinanceiroConfig from '../components/FinanceiroConfig';
 
 const CAMPOS: { chave: string; nome: string; tipo: 'texto' | 'numero' | 'json' | 'bool' | 'audio' | 'lista'; ajuda?: string }[] = [
   { chave: 'minutos_retorno_humano', nome: 'Minutos para a IA voltar após o humano parar de responder', tipo: 'numero', ajuda: 'Regra de intervenção humana (padrão 15).' },
   { chave: 'whatsapp_equipe', nome: 'WhatsApp do dono / equipe para alertas', tipo: 'lista', ajuda: 'Um número por linha, com DDD. Recebem aviso quando a IA para de responder (não soube responder, erro, lead pediu pessoa), pagamentos informados e reuniões.' },
-  { chave: 'link_pagamento_diagnostico', nome: 'Link de pagamento · Diagnóstico (R$ 67)', tipo: 'texto' },
-  { chave: 'link_pagamento_limpa_nome_avista', nome: 'Link de pagamento · Limpa Nome à vista (R$ 797)', tipo: 'texto' },
-  { chave: 'link_pagamento_limpa_nome_tap', nome: 'Link de pagamento · Limpa Nome TAP (entrada R$ 297 + 5x R$ 150)', tipo: 'texto' },
+  { chave: 'link_pagamento_diagnostico', nome: 'Link fixo · Diagnóstico (R$ 67)', tipo: 'texto', ajuda: 'Links fixos só são usados com o Asaas desligado.' },
+  { chave: 'link_pagamento_limpa_nome_avista', nome: 'Link fixo · Limpa Nome à vista (R$ 597)', tipo: 'texto' },
+  { chave: 'link_pagamento_limpa_nome_2x', nome: 'Link fixo · Limpa Nome 2x (1ª de R$ 400)', tipo: 'texto' },
+  { chave: 'link_pagamento_limpa_nome_tap', nome: 'Link fixo · Limpa Nome TAP (entrada R$ 297 + 5x R$ 150)', tipo: 'texto' },
   { chave: 'exigir_pagamento_para_agendar', nome: 'Diagnóstico: só agendar reunião depois do pagamento', tipo: 'bool' },
   { chave: 'audio_modo', nome: 'Respostas em áudio (voz clonada)', tipo: 'audio' },
   { chave: 'elevenlabs_voice_id', nome: 'ID da voz clonada no ElevenLabs (Claudianny / Matheus)', tipo: 'texto' },
@@ -53,6 +55,7 @@ export default function Config({ ctx }: { ctx: Ctx }) {
   return (
     <div className="page">
       <WhatsappConexao ctx={ctx} />
+      <FinanceiroConfig ctx={ctx} />
       <div className="grid g2">
         <div>
           <div className="card">

@@ -273,4 +273,19 @@ begin
   assert p->'contrato'->>'modalidade' = 'tap', 'ficha: ' || p;
 end $$;
 
+
+\echo 'F15. CRM cria contrato só com Asaas ligado e com CPF'
+do $$
+declare r jsonb; v_lead uuid;
+begin
+  perform set_config('request.jwt.claims', '{"email":"ampliize@gmail.com"}', true);
+  select id into v_lead from leads where telefone = '5579990000202';
+  r := crm_criar_contrato(v_lead, 'diagnostico', 'avista');
+  assert (r->>'ok')::boolean = false and r->>'erro' like 'Ligue a cobrança%', 'Asaas desligado: ' || r;
+  update config set valor = 'true' where chave = 'asaas_ativo';
+  update leads set cpf_cnpj = null where id = v_lead;
+  r := crm_criar_contrato(v_lead, 'limpa_nome', 'tap');
+  assert (r->>'ok')::boolean = false and r->>'erro' like 'Preencha o nome%', 'sem CPF: ' || r;
+end $$;
+
 \echo 'OK: todos os testes do financeiro passaram'

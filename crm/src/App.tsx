@@ -1,11 +1,12 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { BarChart3, MessagesSquare, KanbanSquare, Users, CalendarDays, Settings, Bell, LogOut, OctagonX, Play, Bot } from 'lucide-react';
+import { BarChart3, MessagesSquare, KanbanSquare, Users, CalendarDays, Settings, Bell, LogOut, OctagonX, Play, Bot, Wallet } from 'lucide-react';
 import Login from './pages/Login';
 import Dashboard from './pages/Dashboard';
 import Conversas from './pages/Conversas';
 import Pipeline from './pages/Pipeline';
 import Leads from './pages/Leads';
 import Reunioes from './pages/Reunioes';
+import Clientes from './pages/Clientes';
 import Config from './pages/Config';
 import type { Api, Snapshot } from './lib/api';
 import { apiSupabase } from './lib/api';
@@ -21,6 +22,7 @@ const PAGINAS = [
   { id: 'funil', nome: 'Funil', icon: KanbanSquare },
   { id: 'leads', nome: 'Leads', icon: Users },
   { id: 'reunioes', nome: 'Reuniões', icon: CalendarDays },
+  { id: 'clientes', nome: 'Clientes · Financeiro', icon: Wallet },
   { id: 'config', nome: 'Configurações', icon: Settings },
 ] as const;
 type Pagina = typeof PAGINAS[number]['id'];
@@ -70,6 +72,7 @@ function Shell({ api, sair }: { api: Api; sair: () => void }) {
   const pausaInfo = snap.config.sdr_pausado_global?.valor || {};
   const aguardando = snap.conversas.filter(c => c.aguardando_humano).length;
   const alertasNovos = snap.alertas.filter(a => !a.lido).length;
+  const inadimplentes = snap.contratos.filter(c => c.status === 'inadimplente').length;
   const ctx: Ctx = { api, snap, recarregar, toast, agora, abrirConversa: id => { setConversaAberta(id); setPagina('conversas'); } };
 
   async function alternarPausa() {
@@ -85,6 +88,7 @@ function Shell({ api, sair }: { api: Api; sair: () => void }) {
           <button key={p.id} className={'nav' + (pagina === p.id ? ' on' : '')} onClick={() => setPagina(p.id)}>
             <p.icon size={17} /> {p.nome}
             {p.id === 'conversas' && aguardando > 0 && <span className="count">{aguardando}</span>}
+            {p.id === 'clientes' && inadimplentes > 0 && <span className="count" title="clientes inadimplentes">{inadimplentes}</span>}
           </button>
         ))}
         <div className="bottom">{api.demo ? 'Modo demonstração' : api.email()}<br /><button className="nav" style={{ padding: '8px 0' }} onClick={sair}><LogOut size={15} /> Sair</button></div>
@@ -122,6 +126,7 @@ function Shell({ api, sair }: { api: Api; sair: () => void }) {
         {pagina === 'funil' && <Pipeline ctx={ctx} />}
         {pagina === 'leads' && <Leads ctx={ctx} />}
         {pagina === 'reunioes' && <Reunioes ctx={ctx} />}
+        {pagina === 'clientes' && <Clientes ctx={ctx} />}
         {pagina === 'config' && <Config ctx={ctx} />}
       </div>
       {modalPausa && (
