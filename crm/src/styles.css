@@ -65,10 +65,11 @@ td { padding: 10px; border-bottom: 1px solid var(--line); vertical-align: middle
 .toolbar { display: flex; gap: 10px; align-items: center; margin-bottom: 14px; flex-wrap: wrap; }
 .input { border: 1px solid var(--line); background: var(--card); border-radius: 8px; padding: 8px 10px; min-width: 0; }
 .kanban { display: grid; grid-auto-flow: column; grid-auto-columns: 250px; gap: 12px; overflow-x: auto; padding-bottom: 10px; }
-.kcol { background: #eef2f7; border-radius: var(--r); padding: 10px; min-height: 300px; }
+.kcol { background: #eef2f7; border: 1px solid #cdd6e2; border-top: 4px solid var(--cor, #94a3b8); border-radius: var(--r); padding: 10px; min-height: 300px; }
 .kcol h4 { margin: 2px 4px 10px; font-size: 12px; text-transform: uppercase; letter-spacing: .04em; display: flex; gap: 6px; align-items: center; }
 .kcol h4 b { margin-left: auto; color: var(--muted); }
-.kcard { background: var(--card); border-radius: 9px; padding: 10px; margin-bottom: 8px; box-shadow: var(--sh); border: 1px solid var(--line); cursor: grab; font-size: 13px; }
+.kcard { background: var(--card); border-radius: 9px; padding: 10px; margin-bottom: 8px; box-shadow: var(--sh); border: 1px solid #c9d3df; cursor: grab; font-size: 13px; }
+.kcard:hover { border-color: #94a3b8; }
 .kcard .n { font-weight: 650; } .kcard .m { color: var(--muted); font-size: 12px; margin-top: 3px; display: flex; gap: 6px; flex-wrap: wrap; }
 .kcol.drop { outline: 2px dashed var(--gold); }
 .app.fixa { height: 100vh; overflow: hidden; }

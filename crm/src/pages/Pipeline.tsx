@@ -26,7 +26,7 @@ export default function Pipeline({ ctx }: { ctx: Ctx }) {
           const doEstagio = leads.filter(l => l.etapa === e.id);
           const valor = doEstagio.reduce((a, l) => a + (Number(l.valor_venda || l.valor_previsto) || 0), 0);
           return (
-            <div key={e.id} className={'kcol' + (sobre === e.id ? ' drop' : '')} onDragOver={ev => { ev.preventDefault(); setSobre(e.id); }} onDragLeave={() => setSobre(null)} onDrop={() => soltar(e.id)}>
+            <div key={e.id} className={'kcol' + (sobre === e.id ? ' drop' : '')} onDragOver={ev => { ev.preventDefault(); setSobre(e.id); }} onDragLeave={() => setSobre(null)} onDrop={() => soltar(e.id)} style={{ ['--cor' as any]: e.cor }}>
               <h4><span className="dot" style={{ color: e.cor }} />{e.nome}<b>{doEstagio.length}</b></h4>
               {valor > 0 && <div className="small muted" style={{ margin: '-6px 4px 8px' }}>{brl(valor)}</div>}
               {doEstagio.slice(0, 60).map(l => (
