@@ -53,13 +53,14 @@ export interface Contrato {
   aderido_em: string | null; quitado_em: string | null; desconto_quitacao: number | null; criado_por: string; criado_em: string;
   nome: string | null; nome_whatsapp: string | null; telefone: string; cpf_cnpj: string | null; email: string | null;
   pago: number; saldo_devedor: number; vencido: number; pagamentos_feitos: number; pagamentos_total: number;
+  custo_produto: number; custo_recuperado: number;
 }
 export type StatusCobranca = 'planejada' | 'a_gerar' | 'gerando' | 'pendente' | 'vencida' | 'confirmada' | 'recebida' | 'estornada' | 'a_cancelar' | 'cancelada';
 export interface Cobranca {
   id: string; contrato_id: string; lead_id: string; numero: number; tipo: 'avista' | 'adesao' | 'parcela' | 'quitacao' | 'unica';
   valor: number; vencimento: string | null; status: StatusCobranca; motivo_cancelamento: string | null; asaas_payment_id: string | null;
   invoice_url: string | null; forma_paga: string | null; valor_pago: number | null; valor_liquido: number | null; valor_estornado: number | null;
-  pago_em: string | null; erro: string | null; criado_em: string;
+  pago_em: string | null; erro: string | null; criado_em: string; custo_alocado?: number;
 }
 export interface Comissao {
   id: number; cobranca_id: string; contrato_id: string; lead_id: string; beneficiario: string; wallet_id: string | null;

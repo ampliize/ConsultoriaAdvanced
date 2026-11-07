@@ -127,6 +127,7 @@ function gerar(): Snapshot {
     cfg('notif_vencida_dias', [1, 5], 'Aviso depois do vencimento'),
     cfg('notif_textos', NOTIF_TEXTOS, 'Textos das notificações'),
     cfg('processo_etapas', PROCESSO_ETAPAS, 'Etapas do processo'),
+    cfg('custo_produto', { valor: 197, walletId: '', servicos: ['limpa_nome'] }, 'Custo fixo por contrato'),
   ].map(r => [r.chave, r]));
   const fin = financeiro(leads, agora);
   return { leads, conversas, reunioes, eventos, alertas, config, mensagens, ...fin };
@@ -184,11 +185,14 @@ function financeiro(leads: Lead[], agora: number) {
         cobs.push({ id: uid(), contrato_id: ctId, lead_id: l.id, numero: cobs.length + 1, tipo: 'quitacao', valor: saldo, vencimento: isoDia(agora - 2 * DIA), status: 'recebida', motivo_cancelamento: null, asaas_payment_id: 'pay_demo_q', invoice_url: 'https://sandbox.asaas.com/i/demoq', forma_paga: 'PIX', valor_pago: saldo, valor_liquido: r2(saldo - 1.99), valor_estornado: null, pago_em: new Date(agora - 2 * DIA).toISOString(), erro: null, criado_em: new Date(agora - 3 * DIA).toISOString() });
       }
     }
+    let custoPend = 197;
     for (const c of cobs) {
       if (c.status === 'planejada' || c.status === 'cancelada') continue;
+      const custoC = Math.min(custoPend, c.valor); custoPend -= custoC; c.custo_alocado = custoC;
+      const base = c.valor - custoC;
       for (const nome of ['Davy', 'Caio']) {
-        const v = nome === 'Davy' ? Math.round(c.valor * 12.5) / 100 : r2(Math.round(c.valor * 25) / 100 - Math.round(c.valor * 12.5) / 100);
-        comissoes.push({ id: comId++, cobranca_id: c.id, contrato_id: ctId, lead_id: l.id, beneficiario: nome, wallet_id: 'demo-wallet-' + nome.toLowerCase(), base: c.valor, percentual: 12.5, valor: v,
+        const v = nome === 'Davy' ? Math.round(base * 12.5) / 100 : r2(Math.round(base * 25) / 100 - Math.round(base * 12.5) / 100);
+        comissoes.push({ id: comId++, cobranca_id: c.id, contrato_id: ctId, lead_id: l.id, beneficiario: nome, wallet_id: 'demo-wallet-' + nome.toLowerCase(), base, percentual: 12.5, valor: v,
           status: c.status === 'recebida' ? (c.pago_em && agora - new Date(c.pago_em).getTime() > DIA ? 'liquidada' : 'a_liquidar') : 'prevista', liquidada_em: null, criado_em: c.criado_em });
       }
       if (c.status === 'pendente' || c.status === 'vencida') {
@@ -211,6 +215,7 @@ function financeiro(leads: Lead[], agora: number) {
       pago: pagas.reduce((a, c) => a + (c.valor_pago || 0), 0), saldo_devedor: abertas.reduce((a, c) => a + c.valor, 0),
       vencido: abertas.filter(c => c.status === 'vencida').reduce((a, c) => a + c.valor, 0),
       pagamentos_feitos: pagas.length, pagamentos_total: cobs.filter(c => c.status !== 'cancelada' && c.tipo !== 'quitacao').length,
+      custo_produto: 197, custo_recuperado: pagas.reduce((a, c) => a + (c.custo_alocado || 0), 0),
     });
     cobrancas.push(...cobs);
   }
@@ -269,7 +274,7 @@ export function apiDemo(): Api {
       if (db.contratos.some(c => c.lead_id === leadId && c.servico === servico && ['aguardando_pagamento', 'ativo', 'inadimplente'].includes(c.status))) return { ok: false, erro: 'Este cliente já tem um contrato ativo deste serviço.' };
       const parcelas = servico === 'diagnostico' ? [67] : (PLANOS as any)[modalidade].parcelas as number[];
       const id = uid();
-      db.contratos.unshift({ id, lead_id: leadId, servico: servico as any, modalidade: modalidade as any, valor_total: parcelas.reduce((a, b) => a + b, 0), status: 'aguardando_pagamento', processo_etapa: null, processo_detalhe: null, processo_atualizado_em: null, aderido_em: null, quitado_em: null, desconto_quitacao: null, criado_por: 'demo@advance', criado_em: new Date().toISOString(), nome: l.nome, nome_whatsapp: l.nome_whatsapp, telefone: l.telefone, cpf_cnpj: l.cpf_cnpj, email: l.email, pago: 0, saldo_devedor: parcelas.reduce((a, b) => a + b, 0), vencido: 0, pagamentos_feitos: 0, pagamentos_total: parcelas.length });
+      db.contratos.unshift({ id, lead_id: leadId, servico: servico as any, modalidade: modalidade as any, valor_total: parcelas.reduce((a, b) => a + b, 0), status: 'aguardando_pagamento', processo_etapa: null, processo_detalhe: null, processo_atualizado_em: null, aderido_em: null, quitado_em: null, desconto_quitacao: null, criado_por: 'demo@advance', criado_em: new Date().toISOString(), nome: l.nome, nome_whatsapp: l.nome_whatsapp, telefone: l.telefone, cpf_cnpj: l.cpf_cnpj, email: l.email, pago: 0, saldo_devedor: parcelas.reduce((a, b) => a + b, 0), vencido: 0, pagamentos_feitos: 0, pagamentos_total: parcelas.length, custo_produto: servico === 'limpa_nome' ? 197 : 0, custo_recuperado: 0 });
       parcelas.forEach((v, i) => db.cobrancas.push({ id: uid(), contrato_id: id, lead_id: leadId, numero: i + 1, tipo: servico === 'diagnostico' ? 'unica' : modalidade === 'avista' ? 'avista' : modalidade === 'tap' && i === 0 ? 'adesao' : 'parcela', valor: v, vencimento: i === 0 ? isoDia(Date.now() + 2 * DIA) : null, status: i === 0 ? 'a_gerar' : 'planejada', motivo_cancelamento: null, asaas_payment_id: null, invoice_url: null, forma_paga: null, valor_pago: null, valor_liquido: null, valor_estornado: null, pago_em: null, erro: null, criado_em: new Date().toISOString() }));
       avisar('contratos'); return { ok: true };
     },

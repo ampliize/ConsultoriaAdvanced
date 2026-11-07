@@ -42,7 +42,7 @@ export interface Api {
 
 const check = (r: { error: any }) => { if (r.error) throw new Error(r.error.message || String(r.error)); };
 // numeric do Postgres chega como texto: converte os campos de valor
-const NUM = ['valor', 'valor_total', 'pago', 'saldo_devedor', 'vencido', 'valor_pago', 'valor_liquido', 'valor_estornado', 'base', 'percentual', 'desconto_quitacao', 'pagamentos_feitos', 'pagamentos_total'];
+const NUM = ['valor', 'valor_total', 'pago', 'saldo_devedor', 'vencido', 'valor_pago', 'valor_liquido', 'valor_estornado', 'base', 'percentual', 'desconto_quitacao', 'pagamentos_feitos', 'pagamentos_total', 'custo_produto', 'custo_recuperado', 'custo_alocado'];
 const n = <T,>(o: T): T => { const x: any = { ...o }; for (const k of NUM) if (x[k] != null) x[k] = Number(x[k]); return x; };
 const rpc = async (c: any, nome: string, args: any) => { const r = await c.rpc(nome, args); check(r); return (r.data || { ok: false }) as Resultado; };
 

@@ -83,6 +83,10 @@ begin
   assert (r->>'ok')::boolean and r#>>'{cobranca,billingType}' = 'BOLETO', 'reserva: ' || r;
   assert (r#>>'{cobranca,value}')::numeric = 297;
   assert jsonb_array_length(r#>'{cobranca,split}') = 2;
+  -- custo de R$ 197 sai da entrada: comissão só sobre R$ 100 → 12,50 + 12,50
+  assert (select sum((x->>'fixedValue')::numeric) from jsonb_array_elements(r#>'{cobranca,split}') x) = 25.00,
+         'split da entrada TAP com custo: ' || (r#>'{cobranca,split}');
+  assert (select custo_alocado from cobrancas where id = v_cob) = 197;
   assert r#>>'{cliente,mobilePhone}' = '79990000101', 'telefone sem 55: ' || (r#>>'{cliente,mobilePhone}');
   assert (r#>>'{cliente,notificationDisabled}')::boolean = true;
   r2 := asaas_reservar_cobranca(v_cob);
@@ -90,11 +94,12 @@ begin
   -- Asaas criou a cobrança
   r := asaas_cobranca_criada(v_cob, jsonb_build_object('id','pay_1','invoiceUrl','https://sandbox.asaas.com/i/1',
         'dueDate', to_char(hoje()+2,'YYYY-MM-DD'),
-        'split', '[{"id":"sp-davy","walletId":"w-davy","fixedValue":37.13,"status":"PENDING"},{"id":"sp-caio","walletId":"w-caio","fixedValue":37.12,"status":"PENDING"}]'::jsonb));
+        'split', '[{"id":"sp-davy","walletId":"w-davy","fixedValue":12.50,"status":"PENDING"},{"id":"sp-caio","walletId":"w-caio","fixedValue":12.50,"status":"PENDING"}]'::jsonb));
   assert r->>'link' = 'https://sandbox.asaas.com/i/1';
   assert (select status from cobrancas where id = v_cob) = 'pendente';
   assert (select count(*) from comissoes where cobranca_id = v_cob and status = 'prevista') = 2;
-  assert (select sum(valor) from comissoes where cobranca_id = v_cob) = 74.25;
+  assert (select sum(valor) from comissoes where cobranca_id = v_cob) = 25.00;
+  assert (select min(base) from comissoes where cobranca_id = v_cob) = 100, 'base distribuível = 297 - 197';
   -- pedir o link de novo devolve o mesmo
   r := iniciar_contratacao((select conv from t_ctx), 'limpa_nome', 'tap');
   assert r->>'link' = 'https://sandbox.asaas.com/i/1', 'mesmo link: ' || r;
@@ -201,7 +206,7 @@ begin
   perform asaas_registrar_evento(jsonb_build_object('id','evt_6','event','PAYMENT_RECEIVED','payment',
             jsonb_build_object('id','pay_q','value',550,'netValue',548.01,'billingType','PIX')));
   assert (select status from contratos where id = v_ct) = 'quitado', 'contrato quitado';
-  assert (select coalesce(sum(valor),0) from comissoes where contrato_id = v_ct and status in ('a_liquidar','liquidada')) = 74.25 + 37.50 + 137.50,
+  assert (select coalesce(sum(valor),0) from comissoes where contrato_id = v_ct and status in ('a_liquidar','liquidada')) = 25.00 + 37.50 + 137.50,
          'comissão total = 25% de tudo que entrou';
 end $$;
 
@@ -286,6 +291,46 @@ begin
   update leads set cpf_cnpj = null where id = v_lead;
   r := crm_criar_contrato(v_lead, 'limpa_nome', 'tap');
   assert (r->>'ok')::boolean = false and r->>'erro' like 'Preencha o nome%', 'sem CPF: ' || r;
+end $$;
+
+\echo 'F16. custo de R$ 197: à vista e 2x (modelo do documento) e repasse opcional ao fornecedor'
+do $$
+declare r jsonb; v_conv uuid; v_c1 uuid; v_c2 uuid; v_ct uuid;
+begin
+  update config set valor = 'true' where chave = 'asaas_ativo';
+  update config set valor = '[{"nome":"Davy","walletId":"w-davy","percentual":12.5},{"nome":"Caio","walletId":"w-caio","percentual":12.5}]' where chave = 'split_beneficiarios';
+  insert into leads (telefone, nome, cpf_cnpj) values ('5579990000303', 'Ana Custo', '52998224725');
+  insert into conversas (lead_id, telefone) select id, telefone from leads where telefone = '5579990000303' returning id into v_conv;
+  -- à vista 597: comissão 25% de 400 = 100
+  r := iniciar_contratacao(v_conv, 'limpa_nome', 'avista');
+  r := asaas_reservar_cobranca((r->>'cobranca_id')::uuid);
+  assert (select sum((x->>'fixedValue')::numeric) from jsonb_array_elements(r#>'{cobranca,split}') x) = 100, 'à vista: ' || (r#>'{cobranca,split}');
+  -- troca para 2x: 1ª 400 → base 203 → 50,75 (25,38 + 25,37); 2ª 400 → 100
+  r := iniciar_contratacao(v_conv, 'limpa_nome', '2x');
+  v_c1 := (r->>'cobranca_id')::uuid;
+  select contrato_id into v_ct from cobrancas where id = v_c1;
+  assert (select custo_produto from contratos where id = v_ct) = 197;
+  r := asaas_reservar_cobranca(v_c1);
+  assert (select sum((x->>'fixedValue')::numeric) from jsonb_array_elements(r#>'{cobranca,split}') x) = 50.75, '2x 1ª: ' || (r#>'{cobranca,split}');
+  perform asaas_cobranca_criada(v_c1, '{"id":"pay_c1","invoiceUrl":"https://x/1"}');
+  perform asaas_registrar_evento('{"id":"evt_c1","event":"PAYMENT_RECEIVED","payment":{"id":"pay_c1","value":400,"netValue":398,"billingType":"PIX"}}');
+  select id into v_c2 from cobrancas where contrato_id = v_ct and numero = 2;
+  update cobrancas set status = 'a_gerar' where id = v_c2;
+  r := asaas_reservar_cobranca(v_c2);
+  assert (select sum((x->>'fixedValue')::numeric) from jsonb_array_elements(r#>'{cobranca,split}') x) = 100, '2x 2ª: ' || (r#>'{cobranca,split}');
+  assert (select custo_alocado from cobrancas where id = v_c2) = 0, 'custo já recuperado';
+  assert (select custo_recuperado from vw_contratos where id = v_ct) = 197;
+  -- fornecedor com carteira: custo vai por split e não vira comissão
+  update config set valor = '{"valor":197,"walletId":"w-fornecedor","servicos":["limpa_nome"]}' where chave = 'custo_produto';
+  insert into leads (telefone, nome, cpf_cnpj) values ('5579990000404', 'Beto Fornecedor', '52998224725');
+  insert into conversas (lead_id, telefone) select id, telefone from leads where telefone = '5579990000404' returning id into v_conv;
+  r := iniciar_contratacao(v_conv, 'limpa_nome', 'tap');
+  v_c1 := (r->>'cobranca_id')::uuid;
+  r := asaas_reservar_cobranca(v_c1);
+  assert jsonb_array_length(r#>'{cobranca,split}') = 3, 'davy, caio e fornecedor: ' || (r#>'{cobranca,split}');
+  assert exists (select 1 from jsonb_array_elements(r#>'{cobranca,split}') x where x->>'walletId' = 'w-fornecedor' and (x->>'fixedValue')::numeric = 197);
+  perform asaas_cobranca_criada(v_c1, '{"id":"pay_f1","invoiceUrl":"https://x/f"}');
+  assert (select count(*) from comissoes where cobranca_id = v_c1) = 2, 'fornecedor não é comissão';
 end $$;
 
 \echo 'OK: todos os testes do financeiro passaram'

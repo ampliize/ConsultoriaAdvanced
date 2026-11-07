@@ -24,6 +24,7 @@ export default function FinanceiroConfig({ ctx }: { ctx: Ctx }) {
   const [jan, setJan] = useState<{ inicio: string; fim: string }>(cfg.notif_janela?.valor || { inicio: '08:00', fim: '20:00' });
   const [textos, setTextos] = useState<Record<string, string>>(cfg.notif_textos?.valor || {});
   const [etapas, setEtapas] = useState<{ id: string; nome: string; texto: string }[]>(Array.isArray(cfg.processo_etapas?.valor) ? cfg.processo_etapas.valor : []);
+  const [custo, setCusto] = useState<{ valor: number; walletId: string; servicos: string[] }>(cfg.custo_produto?.valor || { valor: 197, walletId: '', servicos: ['limpa_nome'] });
   const [erro, setErro] = useState('');
   useEffect(() => { setAtivo(cfg.asaas_ativo?.valor === true); }, [cfg.asaas_ativo?.valor]);
   const total = benef.reduce((a, b) => a + (Number(b.percentual) || 0), 0);
@@ -40,6 +41,7 @@ export default function FinanceiroConfig({ ctx }: { ctx: Ctx }) {
       await ctx.api.salvarConfig('asaas_base_url', base);
       await ctx.api.salvarConfig('asaas_forma_cobranca', forma);
       await ctx.api.salvarConfig('split_beneficiarios', benef.map(b => ({ nome: b.nome.trim(), walletId: b.walletId.trim(), percentual: Number(b.percentual) })));
+      await ctx.api.salvarConfig('custo_produto', { ...custo, valor: Number(custo.valor) || 0, walletId: (custo.walletId || '').trim() });
       await ctx.api.salvarConfig('notif_lembrete_dias', l);
       await ctx.api.salvarConfig('notif_vencida_dias', v);
       await ctx.api.salvarConfig('notif_janela', jan);
@@ -71,7 +73,7 @@ export default function FinanceiroConfig({ ctx }: { ctx: Ctx }) {
       </div>
       {producao && <div className="small" style={{ color: 'var(--bad)', marginTop: 4 }}>Produção: as cobranças são reais. A chave da API no n8n precisa ser a de produção.</div>}
 
-      <h4 style={{ margin: '16px 0 4px' }}>Split do Limpa Nome <span className="small muted">({total.toLocaleString('pt-BR')}% do valor bruto de cada pagamento)</span></h4>
+      <h4 style={{ margin: '16px 0 4px' }}>Split do Limpa Nome <span className="small muted">({total.toLocaleString('pt-BR')}% de cada pagamento, depois do custo do produto)</span></h4>
       <p className="small muted" style={{ marginTop: 0 }}>O walletId é o identificador da conta Asaas de quem recebe (não é senha). O Asaas manda o valor fixo para cada conta quando o cliente paga.</p>
       {benef.map((b, i) => (
         <div className="row wrap" key={i} style={{ marginBottom: 6 }}>
@@ -82,6 +84,13 @@ export default function FinanceiroConfig({ ctx }: { ctx: Ctx }) {
         </div>
       ))}
       <button type="button" className="btn sm" onClick={() => setBenef([...benef, { nome: '', walletId: '', percentual: 12.5 }])}><Plus size={14} /> Adicionar beneficiário</button>
+
+      <h4 style={{ margin: '16px 0 4px' }}>Custo do produto (Limpa Nome)</h4>
+      <p className="small muted" style={{ marginTop: 0 }}>Sai inteiro do 1º pagamento de cada contrato, antes da comissão. Ex.: entrada TAP de R$ 297 − R$ 197 = R$ 100 → comissão de 25% = R$ 25. Vale para contratos novos.</p>
+      <div className="row wrap">
+        <div className="field"><label>Custo por contrato (R$)</label><input className="input" type="number" min={0} step="0.01" style={{ width: 120 }} value={custo.valor} onChange={e => setCusto({ ...custo, valor: Number(e.target.value) })} /></div>
+        <div className="field" style={{ flex: 1, minWidth: 220 }}><label>walletId do fornecedor (opcional)</label><input className="input" style={{ fontFamily: 'monospace', fontSize: 12 }} placeholder="vazio = o custo fica na conta que cobra" value={custo.walletId} onChange={e => setCusto({ ...custo, walletId: e.target.value })} /></div>
+      </div>
 
       <h4 style={{ margin: '16px 0 4px' }}>Avisos automáticos no WhatsApp</h4>
       <div className="row wrap">

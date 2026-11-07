@@ -22,6 +22,7 @@ export default function Clientes({ ctx }: { ctx: Ctx }) {
   const [novo, setNovo] = useState(false);
   const benef: { nome: string; walletId: string; percentual: number }[] = Array.isArray(config.split_beneficiarios?.valor) ? config.split_beneficiarios.valor : [];
   const asaasAtivo = config.asaas_ativo?.valor === true;
+  const custo = Number(config.custo_produto?.valor?.valor ?? 0);
 
   const m = useMemo(() => {
     const cts = contratos.filter(c => c.servico === servico);
@@ -81,7 +82,7 @@ export default function Clientes({ ctx }: { ctx: Ctx }) {
 
       <div className="grid g3" style={{ marginTop: 14 }}>
         <div className="card">
-          <h3><HandCoins size={16} /> Comissões do split <span className="sub">{totalPct.toLocaleString('pt-BR')}% do bruto recebido</span></h3>
+          <h3><HandCoins size={16} /> Comissões do split <span className="sub">{totalPct.toLocaleString('pt-BR')}% do recebido após o custo</span></h3>
           {servico === 'diagnostico' && <p className="small muted">O Diagnóstico não tem split.</p>}
           {servico === 'limpa_nome' && m.porBenef.map(b => (
             <div key={b.nome} className="list-row" style={{ alignItems: 'flex-start' }}>
@@ -92,7 +93,7 @@ export default function Clientes({ ctx }: { ctx: Ctx }) {
               </span>
             </div>
           ))}
-          <p className="small muted" style={{ marginTop: 8 }}>Comissão só conta quando o cliente paga. Prevista = parcelas que ainda vão vencer.</p>
+          <p className="small muted" style={{ marginTop: 8 }}>O custo do produto ({brl(custo)} por contrato) sai do 1º pagamento; a comissão incide sobre o restante. Só conta quando o cliente paga. Prevista = parcelas que ainda vão vencer.</p>
         </div>
         <div className="card">
           <h3>Contratos por modalidade</h3>
@@ -198,6 +199,7 @@ function Detalhe({ ctx, ct, etapas, fechar }: { ctx: Ctx; ct: Contrato; etapas: 
           <div><div className="small muted">Saldo devedor</div><div className="b">{brl(ct.saldo_devedor)}</div></div>
           <div><div className="small muted">Em atraso</div><div className="b" style={{ color: ct.vencido ? 'var(--bad)' : undefined }}>{brl(ct.vencido)}</div></div>
         </div>
+        {ct.custo_produto > 0 && <div className="small muted" style={{ marginTop: 6 }}>Custo do produto: {brl(ct.custo_produto)} · recuperado {brl(ct.custo_recuperado)}{ct.custo_recuperado < ct.custo_produto ? ' (sai do próximo pagamento antes da comissão)' : ''}</div>}
 
         <div className="row wrap" style={{ marginTop: 14, gap: 8 }}>
           <button className="btn sm" onClick={() => { const c = ctx.snap.conversas.find(c => c.lead_id === ct.lead_id); if (c) ctx.abrirConversa(c.id); }}><MessageCircle size={14} /> Abrir conversa</button>
