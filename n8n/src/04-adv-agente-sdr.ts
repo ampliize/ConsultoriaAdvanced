@@ -83,18 +83,31 @@ const ficha = tool({
 });
 
 const pagamento = tool({
-  type: 'n8n-nodes-base.postgresTool',
-  version: 2.6,
+  type: '@n8n/n8n-nodes-langchain.toolWorkflow',
+  version: 2.2,
   config: {
     name: 'gerar_link_pagamento',
     parameters: {
-      descriptionType: 'manual',
-      toolDescription: 'Retorna o link de pagamento oficial e a condição (valor) para o serviço escolhido e move o lead para PROPOSTA. Chame quando o lead aceitar contratar. forma: avista, 2x ou tap (2x = 2x de R$ 400 e tap = entrada R$ 297 + 5x R$ 150, só no limpa_nome; diagnóstico é sempre avista). Precisa do nome completo e do CPF/CNPJ já salvos. Pagamento só PIX ou boleto. Se ok=false, siga a orientacao e NUNCA invente link.',
-      operation: 'executeQuery',
-      query: 'select public.link_pagamento($1::uuid, $2, $3) as resultado',
-      options: { queryReplacement: expr("{{ [ $('Recebe lote do lead').item.json.conversa_id, $fromAI('servico', 'diagnostico ou limpa_nome', 'string'), $fromAI('forma', 'avista, 2x ou tap', 'string') ] }}") }
+      description: 'Gera o link de pagamento oficial (boleto com PIX, sem cartão) e a condição do serviço escolhido, e move o lead para PROPOSTA. Chame quando o lead aceitar contratar. modalidade: avista, 2x ou tap (2x = 2x de R$ 400 e tap = entrada R$ 297 + 5x R$ 150, só no limpa_nome; diagnóstico é sempre avista). Precisa do nome completo e do CPF/CNPJ já salvos. Envie o link exatamente como veio. Se ok=false, siga a orientacao e NUNCA invente link.',
+      source: 'database',
+      workflowId: { __rl: true, mode: 'id', value: '5i8G5K4B4k7LyuBB', cachedResultName: 'ADV · Contratar' },
+      workflowInputs: {
+        mappingMode: 'defineBelow',
+        value: {
+          conversa_id: expr("{{ $('Recebe lote do lead').item.json.conversa_id }}"),
+          servico: expr("{{ $fromAI('servico', 'diagnostico ou limpa_nome', 'string') }}"),
+          modalidade: expr("{{ $fromAI('modalidade', 'avista, 2x ou tap', 'string') }}")
+        },
+        matchingColumns: [],
+        schema: [
+          { id: 'conversa_id', displayName: 'conversa_id', required: false, defaultMatch: false, display: true, canBeUsedToMatch: true, type: 'string' },
+          { id: 'servico', displayName: 'servico', required: false, defaultMatch: false, display: true, canBeUsedToMatch: true, type: 'string' },
+          { id: 'modalidade', displayName: 'modalidade', required: false, defaultMatch: false, display: true, canBeUsedToMatch: true, type: 'string' }
+        ],
+        attemptToConvertTypes: false,
+        convertFieldsToString: false
+      }
     },
-    credentials: { postgres: pgCred },
     position: [800, 560]
   }
 });
