@@ -72,3 +72,27 @@ psql "$DATABASE_URL_DE_TESTE" -f supabase/migrations/20261104000100_advance_sdr_
   -f supabase/migrations/20261104000200_advance_seed.sql -f supabase/tests/cenarios.sql
 ```
 (use um banco de teste: o roteiro cria leads fictícios)
+
+## Financeiro do Limpa Nome (Asaas + split)
+
+**Modalidades** (só PIX ou boleto): à vista R$ 597 · 2x de R$ 400 · TAP: entrada R$ 297 + 5x R$ 150 (R$ 1.047). Diagnóstico R$ 67 (sem split).
+
+**Split:** 12,5% para cada beneficiário (Davy e Caio) sobre o **valor bruto** de cada pagamento do Limpa Nome. O Asaas calcula percentual sobre o valor líquido, por isso o split vai como **valor fixo** (`fixedValue` = 12,5% do valor da cobrança; o último beneficiário fecha os centavos: R$ 297 → 37,13 + 37,12). A tarifa do Asaas fica na conta que emite. O Asaas só repassa quando o cliente paga e estorna o split junto quando a cobrança é estornada.
+
+**Fluxo:**
+1. A IA (ou o CRM em *Novo contrato*) chama `iniciar_contratacao` → cria o contrato e uma cobrança por pagamento. A 1ª fica `a_gerar`; as demais `planejada`.
+2. `ADV · Asaas` cria o cliente (busca pelo CPF antes), confere se a cobrança já existe (`externalReference` = id da cobrança) e cria com split. Se falhar, a rotina tenta de novo e manda o link ao cliente no WhatsApp.
+3. Webhook do Asaas → `asaas_registrar_evento`: grava o evento pelo `id` (repetido não processa de novo) e aplica a regra: pago (ativa o contrato, agenda as parcelas mês a mês, avisa a IA), vencido (inadimplente), estorno, split liquidado.
+4. A rotina cria cada parcela no Asaas 10 dias antes do vencimento. As Rotinas mandam lembrete (3 dias antes e no dia), aviso de atraso (1 e 5 dias depois) e o andamento do processo.
+5. Quitação antecipada (CRM): soma o saldo em aberto, desconto só por administrador e com motivo, cancela as cobranças em aberto no Asaas e gera uma cobrança de quitação com split de 25% sobre o valor dela. O contrato só fica quitado quando o Asaas confirma.
+
+**Workflows:** `ADV · Asaas` (vSXROKXHWOPll0fl), `ADV · Contratar` (5i8G5K4B4k7LyuBB, ferramenta da IA). Notificações em `ADV · Rotinas`.
+
+**Ativar (sandbox primeiro):**
+1. Asaas → Integrações → Segurança → **Habilitar Split** (bloqueado por padrão em contas novas).
+2. n8n → credencial Header Auth **ADV Asaas API** (`access_token` = chave da API) e **ADV Webhook Asaas** (`asaas-access-token` = token do webhook).
+3. Asaas → Webhooks → URL `https://n8n-n8n.dgwpoe.easypanel.host/webhook/adv-asaas-eventos-r7t4k2`, mesmo token, eventos listados em Configurações do CRM.
+4. CRM → Configurações → Financeiro: walletId de cada beneficiário, ambiente Sandbox, ligar o Asaas.
+5. Ligar as credenciais nos nós do `ADV · Asaas`, publicar `ADV · Asaas` e `ADV · Contratar`, e trocar a ferramenta `gerar_link_pagamento` do agente para chamar o `ADV · Contratar`.
+
+**Testes:** `psql -f supabase/tests/financeiro.sql` (15 cenários: split, modalidades, idempotência do webhook, parcelas, inadimplência, quitação com desconto, estorno, notificações, links fixos sem Asaas).
