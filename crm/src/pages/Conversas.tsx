@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Hand, Bot, Search, Mic, Image as Img, FileText, SendHorizontal } from 'lucide-react';
+import { Hand, Bot, Search, Mic, Image as Img, FileText, SendHorizontal, ArrowLeft } from 'lucide-react';
 import type { Ctx } from '../App';
 import type { Conversa, Mensagem } from '../lib/types';
 import { etapaInfo } from '../lib/types';
@@ -26,6 +26,7 @@ export default function Conversas({ ctx, selecionada, selecionar }: { ctx: Ctx; 
   const caixa = useRef<HTMLDivElement>(null);
   const [texto, setTexto] = useState('');
   const [enviando, setEnviando] = useState(false);
+  const [aberta, setAberta] = useState(!!selecionada); // celular: lista ou conversa em tela cheia
   const pausado = !!ctx.snap.config.sdr_pausado_global?.valor?.pausado;
   const lista = useMemo(() => ctx.snap.conversas.filter(c => {
     const s = statusConversa(c, false, ctx.agora);
@@ -48,7 +49,10 @@ export default function Conversas({ ctx, selecionada, selecionar }: { ctx: Ctx; 
   useEffect(() => { const c = caixa.current; if (c) c.scrollTop = c.scrollHeight; }, [msgs.length, selecionada]);
 
   const assumir = async () => { await ctx.api.assumir(conv!.id); ctx.toast('Você assumiu o atendimento. A IA não responde esta conversa até você devolver.'); ctx.recarregar(); };
-  const devolver = async () => { await ctx.api.devolver(conv!.id); ctx.toast('Conversa devolvida para a IA'); ctx.recarregar(); };
+  const devolver = async () => {
+    if (!window.confirm('A IA volta a responder esta conversa AGORA. Se você ainda está atendendo, cancele: ela volta sozinha alguns minutos depois da sua última mensagem.')) return;
+    await ctx.api.devolver(conv!.id); ctx.toast('Conversa devolvida para a IA'); ctx.recarregar();
+  };
   const enviar = async () => {
     const t = texto.trim(); if (!t || !conv || enviando) return;
     setEnviando(true);
@@ -64,7 +68,7 @@ export default function Conversas({ ctx, selecionada, selecionar }: { ctx: Ctx; 
   const st = conv ? statusConversa(conv, pausado, ctx.agora) : null;
 
   return (
-    <div className="chat">
+    <div className={'chat' + (aberta ? ' aberta' : '')}>
       <div className="lst">
         <div className="f">
           <div className="row"><Search size={15} className="muted" /><input className="input" style={{ flex: 1 }} placeholder="Buscar nome ou telefone" value={busca} onChange={e => setBusca(e.target.value)} /></div>
@@ -73,7 +77,7 @@ export default function Conversas({ ctx, selecionada, selecionar }: { ctx: Ctx; 
         {lista.map(c => {
           const s = statusConversa(c, pausado, ctx.agora); const e = etapaInfo(c.etapa);
           return (
-            <div key={c.id} className={'citem' + (c.id === selecionada ? ' on' : '')} onClick={() => selecionar(c.id)}>
+            <div key={c.id} className={'citem' + (c.id === selecionada ? ' on' : '')} onClick={() => { selecionar(c.id); setAberta(true); }}>
               <div className="l1">{nomeLead(c)}{c.nao_lidas > 0 && <span className="chip" style={{ background: 'var(--ok)' }}>{c.nao_lidas}</span>}<span className="t">{relativo(c.ultima_msg_em)}</span></div>
               <div className="l2">{c.ultima_msg_autor === 'lead' ? '' : c.ultima_msg_autor === 'humano' ? '👤 ' : '🤖 '}{c.ultima_msg_texto || '—'}</div>
               <div className="row"><span className={'pill ' + s.cls} style={{ fontSize: 10, padding: '2px 7px' }}>{s.txt}</span><span className="chip" style={{ background: e.cor, fontSize: 10 }}>{e.nome}</span></div>
@@ -85,7 +89,8 @@ export default function Conversas({ ctx, selecionada, selecionar }: { ctx: Ctx; 
       <div className="thread">
         {conv ? <>
           <div className="thead">
-            <div><div className="b">{nomeLead(conv)}</div><div className="small muted">{conv.motivo_handoff && conv.aguardando_humano ? `Transferida pela IA: ${conv.motivo_handoff}` : `Conversa iniciada em ${dataHora(conv.criado_em)}`}</div></div>
+            <button className="btn icone voltar" onClick={() => setAberta(false)} aria-label="Voltar para a lista"><ArrowLeft size={18} /></button>
+            <div style={{ minWidth: 0 }}><div className="b">{nomeLead(conv)}</div><div className="small muted">{conv.motivo_handoff && conv.aguardando_humano ? `Transferida pela IA: ${conv.motivo_handoff}` : `Conversa iniciada em ${dataHora(conv.criado_em)}`}</div></div>
             <span className={'pill ' + st!.cls} style={{ marginLeft: 'auto' }}><span className="dot" /> {st!.txt}</span>
             {conv.assumida_manual || conv.aguardando_humano || !conv.ia_ativa
               ? <button className="btn ok" onClick={devolver}><Bot size={16} /> Devolver para a IA</button>
@@ -104,10 +109,10 @@ export default function Conversas({ ctx, selecionada, selecionar }: { ctx: Ctx; 
             ))}
           </div>
           <div className="composer">
-            <textarea className="input" rows={2} placeholder="Escreva sua resposta para o lead…  (Enter envia · Shift+Enter quebra linha)" value={texto} disabled={enviando}
+            <textarea className="input" rows={2} placeholder="Escreva sua resposta…" value={texto} disabled={enviando}
               onChange={e => setTexto(e.target.value)}
               onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); enviar(); } }} />
-            <button className="btn primary" disabled={enviando || !texto.trim()} onClick={enviar} title="Enviar"><SendHorizontal size={16} /> {enviando ? 'Enviando…' : 'Enviar'}</button>
+            <button className="btn primary" disabled={enviando || !texto.trim()} onClick={enviar} title="Enviar"><SendHorizontal size={16} /> <span>{enviando ? 'Enviando…' : 'Enviar'}</span></button>
           </div>
           <div className="small muted" style={{ padding: '0 16px 10px', background: 'var(--card)' }}>
             {conv.assumida_manual ? 'Conversa assumida: a IA só volta quando você clicar em “Devolver para a IA”.' : `Ao responder (aqui ou pelo celular), a IA pausa nesta conversa e volta sozinha ${ctx.snap.config.minutos_retorno_humano?.valor ?? 15} min depois da sua última mensagem. Para ela não voltar, use “Assumir atendimento”.`}

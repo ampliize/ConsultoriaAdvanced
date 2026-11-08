@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { BarChart3, MessagesSquare, KanbanSquare, Users, CalendarDays, Settings, Bell, LogOut, OctagonX, Play, Bot, Wallet } from 'lucide-react';
+import { BarChart3, MessagesSquare, KanbanSquare, Users, CalendarDays, Settings, Bell, LogOut, OctagonX, Play, Bot, Wallet, Menu, X } from 'lucide-react';
 import Login from './pages/Login';
 import Dashboard from './pages/Dashboard';
 import Conversas from './pages/Conversas';
@@ -53,7 +53,9 @@ function Shell({ api, sair }: { api: Api; sair: () => void }) {
   const [motivo, setMotivo] = useState('');
   const [verAlertas, setVerAlertas] = useState(false);
   const [agora, setAgora] = useState(Date.now());
+  const [menu, setMenu] = useState(false);
   const timer = useRef<any>(null);
+  useRotulosTabela();
 
   const recarregar = useCallback(() => {
     api.carregar(null).then(s => { setSnap(s); setErro(''); }).catch(e => setErro(e.message));
@@ -81,11 +83,12 @@ function Shell({ api, sair }: { api: Api; sair: () => void }) {
   }
 
   return (
-    <div className={'app' + (pagina === 'conversas' ? ' fixa' : '')}>
+    <div className={'app' + (pagina === 'conversas' ? ' fixa' : '') + (menu ? ' menu-aberto' : '')}>
+      <div className="menu-fundo" onClick={() => setMenu(false)} />
       <aside className="side">
-        <div className="brand"><Bot size={22} color="#d4a24c" /><div>Advance<small>SDR IA · Ampliize</small></div></div>
+        <div className="brand"><Bot size={22} color="#d4a24c" /><div>Advance<small>SDR IA · Ampliize</small></div><button className="fechar-menu" onClick={() => setMenu(false)} aria-label="Fechar menu"><X size={20} /></button></div>
         {PAGINAS.map(p => (
-          <button key={p.id} className={'nav' + (pagina === p.id ? ' on' : '')} onClick={() => setPagina(p.id)}>
+          <button key={p.id} className={'nav' + (pagina === p.id ? ' on' : '')} onClick={() => { setPagina(p.id); setMenu(false); }}>
             <p.icon size={17} /> {p.nome}
             {p.id === 'conversas' && aguardando > 0 && <span className="count">{aguardando}</span>}
             {p.id === 'clientes' && inadimplentes > 0 && <span className="count" title="clientes inadimplentes">{inadimplentes}</span>}
@@ -97,16 +100,17 @@ function Shell({ api, sair }: { api: Api; sair: () => void }) {
         {pausado && <div className="banner"><OctagonX size={18} /> SDR IA PAUSADO em todas as conversas{pausaInfo.por ? ` · por ${pausaInfo.por}` : ''}{pausaInfo.em ? ` em ${dataHora(pausaInfo.em)}` : ''}{pausaInfo.motivo ? ` · ${pausaInfo.motivo}` : ''}. Nenhuma mensagem automática está sendo enviada.</div>}
         {api.demo && <div className="banner" style={{ background: '#92400e' }}>Demonstração com dados fictícios — nada aqui é enviado para o WhatsApp.</div>}
         <header className="top">
+          <button className="btn icone abre-menu" onClick={() => setMenu(true)} aria-label="Abrir menu"><Menu size={20} />{(aguardando + inadimplentes) > 0 && <span className="ponto" />}</button>
           <h1>{PAGINAS.find(p => p.id === pagina)!.nome}</h1>
           <div className="grow" />
-          {pausado ? <span className="pill bad"><span className="dot" /> SDR pausado</span> : <span className="pill ok"><span className="dot pulse" /> SDR IA ativo</span>}
+          {pausado ? <span className="pill bad status-sdr"><span className="dot" /> <span className="txt">SDR pausado</span></span> : <span className="pill ok status-sdr"><span className="dot pulse" /> <span className="txt">SDR IA ativo</span></span>}
           <div style={{ position: 'relative' }}>
             <button className="btn" onClick={() => { setVerAlertas(v => !v); if (alertasNovos) api.marcarAlertasLidos().then(recarregar); }} title="Alertas">
               <Bell size={16} />{alertasNovos > 0 && <span className="chip" style={{ background: 'var(--bad)' }}>{alertasNovos}</span>}
             </button>
           </div>
-          <button className={'emerg' + (pausado ? ' resume' : '')} onClick={() => setModalPausa(true)}>
-            {pausado ? <><Play size={16} /> Reativar SDR</> : <><OctagonX size={16} /> Emergência: pausar tudo</>}
+          <button className={'emerg' + (pausado ? ' resume' : '')} onClick={() => setModalPausa(true)} title={pausado ? 'Reativar SDR' : 'Emergência: pausar tudo'}>
+            {pausado ? <><Play size={16} /> <span className="txt">Reativar SDR</span></> : <><OctagonX size={16} /> <span className="txt">Emergência: pausar tudo</span></>}
           </button>
         </header>
         {verAlertas && (
@@ -145,4 +149,21 @@ function Shell({ api, sair }: { api: Api; sair: () => void }) {
       {msg && <div className="toast">{msg}</div>}
     </div>
   );
+}
+
+// No celular as tabelas viram cartões: cada célula recebe o nome da coluna (data-label).
+function useRotulosTabela() {
+  useEffect(() => {
+    const rotular = () => document.querySelectorAll('table').forEach(t => {
+      const cab = [...t.querySelectorAll('thead th')].map(th => th.textContent || '');
+      t.querySelectorAll('tbody tr').forEach(tr => [...tr.children].forEach((td, i) => {
+        if (cab[i] !== undefined && td.getAttribute('data-label') !== cab[i]) td.setAttribute('data-label', cab[i]);
+      }));
+    });
+    rotular();
+    let pend = 0;
+    const obs = new MutationObserver(() => { cancelAnimationFrame(pend); pend = requestAnimationFrame(rotular); });
+    obs.observe(document.body, { childList: true, subtree: true });
+    return () => { obs.disconnect(); cancelAnimationFrame(pend); };
+  }, []);
 }

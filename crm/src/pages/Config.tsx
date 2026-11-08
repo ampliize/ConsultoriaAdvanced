@@ -91,7 +91,7 @@ function IaConfig({ ctx }: { ctx: Ctx }) {
           <select className="input" value={String(exigir)} onChange={e => setExigir(e.target.value === 'true')}><option value="true">Só agendar depois do pagamento</option><option value="false">Pode agendar antes</option></select></div>
       </div>
     </Caixa>
-    <Caixa titulo="Alertas para a equipe" desc="Recebem aviso quando a IA para de responder, pagamento informado, reunião marcada ou erro.">
+    <Caixa titulo="Equipe" desc="Recebem os alertas (IA parou, pagamento, reunião, erro). A IA nunca responde estes números como se fossem leads.">
       <div className="field"><label>WhatsApp da equipe (um por linha, com DDD)</label>
         <textarea className="input" rows={3} value={equipe} onChange={e => setEquipe(e.target.value)} placeholder="79 99999-9999" /></div>
     </Caixa>

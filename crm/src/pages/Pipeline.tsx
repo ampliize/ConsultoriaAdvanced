@@ -8,6 +8,12 @@ export default function Pipeline({ ctx }: { ctx: Ctx }) {
   const [arrastando, setArrastando] = useState<string | null>(null);
   const [sobre, setSobre] = useState<string | null>(null);
   const leads = ctx.snap.leads.filter(l => servico === 'todos' || l.servico === servico);
+  const mover = async (id: string, etapa: Etapa) => {
+    const l = ctx.snap.leads.find(x => x.id === id);
+    if (!l || l.etapa === etapa) return;
+    const motivo = etapa === 'perdido' || etapa === 'desqualificado' ? prompt('Motivo?') || undefined : undefined;
+    await ctx.api.moverEtapa(l.id, etapa, motivo); ctx.toast(`${nomeLead(l)} → ${ETAPAS.find(e => e.id === etapa)!.nome}`); ctx.recarregar();
+  };
   const soltar = async (etapa: Etapa) => {
     setSobre(null); if (!arrastando) return;
     const l = ctx.snap.leads.find(x => x.id === arrastando); setArrastando(null);
@@ -19,7 +25,8 @@ export default function Pipeline({ ctx }: { ctx: Ctx }) {
     <div className="page">
       <div className="toolbar">
         <div className="seg">{[['todos', 'Os dois funis'], ['diagnostico', 'Funil Diagnóstico'], ['limpa_nome', 'Funil Limpa Nome']].map(([k, n]) => <button key={k} className={servico === k ? 'on' : ''} onClick={() => setServico(k)}>{n}</button>)}</div>
-        <span className="small muted">Arraste os cards para mudar a etapa. Clique para abrir a conversa.</span>
+        <span className="small muted so-desktop">Arraste os cards para mudar a etapa. Clique para abrir a conversa.</span>
+        <span className="small muted so-celular">Deslize para o lado para ver as etapas. Toque no card para abrir a conversa.</span>
       </div>
       <div className="kanban">
         {ETAPAS.map(e => {
@@ -34,6 +41,7 @@ export default function Pipeline({ ctx }: { ctx: Ctx }) {
                   <div className="n">{nomeLead(l)}</div>
                   <div className="m"><span>{SERVICO[l.servico]}</span>{l.urgencia && <span>· urgência {l.urgencia}</span>}<span>· {relativo(l.atualizado_em)}</span></div>
                   {l.motivo_perda && <div className="m">motivo: {l.motivo_perda}</div>}
+                  <select className="input kmover so-celular" value={l.etapa} onClick={ev => ev.stopPropagation()} onChange={ev => mover(l.id, ev.target.value as Etapa)} aria-label="Mudar etapa">{ETAPAS.map(x => <option key={x.id} value={x.id}>Mover para: {x.nome}</option>)}</select>
                 </div>
               ))}
               {doEstagio.length > 60 && <div className="small muted">+{doEstagio.length - 60} leads</div>}

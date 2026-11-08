@@ -108,11 +108,72 @@ td { padding: 10px; border-bottom: 1px solid var(--line); vertical-align: middle
 .alerts .a { padding: 10px 14px; border-bottom: 1px solid var(--line); font-size: 13px; } .alerts .a.novo { background: #fffbeb; }
 .toast { position: fixed; bottom: 20px; right: 20px; background: var(--navy); color: #fff; padding: 12px 16px; border-radius: 10px; z-index: 60; box-shadow: var(--sh); }
 @media (max-width: 1100px) { .g4 { grid-template-columns: repeat(2, minmax(0,1fr)); } .chat { grid-template-columns: 280px 1fr; } .chat .side-panel { display: none; } }
+.abre-menu, .fechar-menu, .voltar, .menu-fundo, .so-celular { display: none; }
+.btn.icone { padding: 8px; position: relative; }
+.btn.icone .ponto { position: absolute; top: 5px; right: 5px; width: 8px; height: 8px; border-radius: 50%; background: var(--bad); }
+
+/* ---------- celular e tablet pequeno ---------- */
 @media (max-width: 760px) {
-  .app { grid-template-columns: 1fr; } .side { position: static; height: auto; flex-direction: row; overflow-x: auto; padding: 8px; } .brand, .side .bottom { display: none; }
-  .nav { width: auto; white-space: nowrap; } .g3, .g2 { grid-template-columns: 1fr; } .page { padding: 16px; } .top { padding: 12px 16px; flex-wrap: wrap; }
-  .app.fixa, .app.fixa .main { height: auto; overflow: visible; }
-  .chat { grid-template-columns: 1fr; overflow: visible; } .chat .lst { max-height: 40vh; } .thread { height: 75vh; } .msgs { padding: 14px; } .funnel-row { grid-template-columns: 100px 1fr 60px; }
+  body { font-size: 14px; }
+  .app { grid-template-columns: 1fr; }
+  /* menu lateral vira gaveta */
+  .side { position: fixed; left: 0; top: 0; bottom: 0; height: 100dvh; width: 270px; max-width: 85vw; z-index: 40; transform: translateX(-105%); transition: transform .2s ease; overflow-y: auto; }
+  .menu-aberto .side { transform: none; box-shadow: 0 0 40px rgba(0,0,0,.35); }
+  .menu-fundo { position: fixed; inset: 0; background: rgba(15,23,42,.45); z-index: 39; }
+  .menu-aberto .menu-fundo { display: block; }
+  .brand { padding: 4px 8px 14px; } .fechar-menu { display: inline-flex; margin-left: auto; background: none; border: 0; color: #cbd5e1; padding: 6px; }
+  .nav { padding: 12px 10px; font-size: 15px; }
+  /* barra do topo compacta: menu · título · status · alertas · emergência */
+  .top { padding: 8px 12px; gap: 8px; }
+  .top h1 { font-size: 16px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+  .abre-menu { display: inline-flex; }
+  .status-sdr .txt, .emerg .txt { display: none; }
+  .status-sdr { padding: 6px; } .status-sdr .dot { width: 10px; height: 10px; }
+  .emerg { padding: 9px 11px; }
+  .banner { padding: 8px 12px; font-size: 13px; }
+  .alerts { position: fixed; left: 8px; right: 8px; top: 56px; width: auto; max-height: 75dvh; }
+  .page { padding: 12px 12px 32px; }
+  .grid { gap: 10px; } .g3, .g2 { grid-template-columns: 1fr; }
+  .card { padding: 14px; }
+  .kpi .val { font-size: 22px; }
+  .toolbar { gap: 8px; } .toolbar .input { flex: 1 1 140px; }
+  .funnel-row { grid-template-columns: 92px 1fr 52px; gap: 6px; font-size: 12px; }
+  .so-desktop { display: none; } span.so-celular { display: inline; } .kmover.so-celular { display: block; width: 100%; margin-top: 8px; font-size: 13px !important; padding: 6px 8px; }
+  .kanban { grid-auto-columns: 82vw; scroll-snap-type: x mandatory; } .kcol { scroll-snap-align: start; }
+  /* tabelas viram cartões */
+  table, tbody, tr, td { display: block; width: 100%; }
+  thead { display: none; }
+  tr { border: 1px solid #d6dee8; border-radius: 10px; margin: 0 0 10px; padding: 6px 12px; background: var(--card); }
+  td { border: 0; padding: 6px 0; display: flex; justify-content: space-between; align-items: center; gap: 12px; text-align: right; min-height: 32px; }
+  td::before { content: attr(data-label); font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: .04em; color: var(--muted); text-align: left; flex: none; }
+  td[data-label=""]::before { content: none; }
+  td:first-child { font-size: 15px; justify-content: flex-start; text-align: left; border-bottom: 1px solid #eef2f7; padding-bottom: 8px; margin-bottom: 2px; }
+  td:first-child::before { content: none; }
+  td > div { text-align: right; } td:first-child > div { text-align: left; }
+  td .input { max-width: 60%; }
+  .card:has(> table), .card:has(> h3 + table) { background: none; border: 0; box-shadow: none; padding: 0; }
+  tr.click:hover td { background: none; }
+  /* modais ocupam a largura toda, presos embaixo */
+  .modal-bg { place-items: end center; padding: 0; }
+  .modal { max-width: none !important; border-radius: 16px 16px 0 0; max-height: 92dvh; overflow-y: auto; padding: 18px 16px calc(18px + env(safe-area-inset-bottom)); }
+  .modal .row.end { flex-wrap: wrap; } .modal .row.end .btn { flex: 1 1 auto; justify-content: center; }
+  .toast { left: 12px; right: 12px; bottom: 12px; text-align: center; }
+  /* conversas: lista OU conversa em tela cheia */
+  .app.fixa, .app.fixa .main { height: 100dvh; }
+  .chat { grid-template-columns: 1fr; }
+  .chat .thread, .chat .side-panel { display: none; }
+  .chat.aberta .lst { display: none; } .chat.aberta .thread { display: flex; }
+  .voltar { display: inline-flex; }
+  .thead { padding: 8px 10px; gap: 8px; flex-wrap: nowrap; }
+  .thead .b { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .thead .small { display: none; }
+  .thead .pill { display: none; }
+  .thead .btn.ok, .thead .btn.gold { margin-left: auto; padding: 7px 10px; font-size: 12px; white-space: nowrap; }
+  .msgs { padding: 12px 10px; } .msg { max-width: 86%; }
+  .composer { padding: 8px 10px; } .composer .btn { padding: 10px; } .composer .btn span { display: none; }
+  .composer + .small { display: none; }
+  .seg { display: flex; flex-wrap: nowrap !important; overflow-x: auto; } .seg button { white-space: nowrap; }
+  input.input, select.input, textarea.input { font-size: 16px; } /* evita zoom automático no iPhone */
 }
 
 .composer { display: flex; gap: 8px; align-items: flex-end; padding: 10px 16px 6px; background: var(--card); border-top: 1px solid var(--line); }
