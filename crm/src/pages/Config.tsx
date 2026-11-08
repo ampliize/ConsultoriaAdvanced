@@ -1,87 +1,138 @@
 import { useEffect, useState } from 'react';
+import { Smartphone, Wallet, HandCoins, BellRing, Scale, CalendarDays, MessageCircleReply, Bot, Users } from 'lucide-react';
 import type { Ctx } from '../App';
 import type { CrmUsuario } from '../lib/api';
 import WhatsappConexao from '../components/WhatsappConexao';
 import AgendaEditor from '../components/AgendaEditor';
 import FollowupEditor from '../components/FollowupEditor';
-import FinanceiroConfig from '../components/FinanceiroConfig';
+import { PagamentosConfig, SplitConfig, AvisosConfig, ProcessoConfig, Caixa, Dica } from '../components/FinanceiroConfig';
 
-const CAMPOS: { chave: string; nome: string; tipo: 'texto' | 'numero' | 'json' | 'bool' | 'audio' | 'lista'; ajuda?: string }[] = [
-  { chave: 'minutos_retorno_humano', nome: 'Minutos para a IA voltar após o humano parar de responder', tipo: 'numero', ajuda: 'Regra de intervenção humana (padrão 15).' },
-  { chave: 'whatsapp_equipe', nome: 'WhatsApp do dono / equipe para alertas', tipo: 'lista', ajuda: 'Um número por linha, com DDD. Recebem aviso quando a IA para de responder (não soube responder, erro, lead pediu pessoa), pagamentos informados e reuniões.' },
-  { chave: 'link_pagamento_diagnostico', nome: 'Link fixo · Diagnóstico (R$ 67)', tipo: 'texto', ajuda: 'Links fixos só são usados com o Asaas desligado.' },
-  { chave: 'link_pagamento_limpa_nome_avista', nome: 'Link fixo · Limpa Nome à vista (R$ 597)', tipo: 'texto' },
-  { chave: 'link_pagamento_limpa_nome_2x', nome: 'Link fixo · Limpa Nome 2x (1ª de R$ 400)', tipo: 'texto' },
-  { chave: 'link_pagamento_limpa_nome_tap', nome: 'Link fixo · Limpa Nome TAP (entrada R$ 297 + 5x R$ 150)', tipo: 'texto' },
-  { chave: 'exigir_pagamento_para_agendar', nome: 'Diagnóstico: só agendar reunião depois do pagamento', tipo: 'bool' },
-  { chave: 'audio_modo', nome: 'Respostas em áudio (voz clonada)', tipo: 'audio' },
-  { chave: 'elevenlabs_voice_id', nome: 'ID da voz clonada no ElevenLabs (Claudianny / Matheus)', tipo: 'texto' },
+type Aba = 'whatsapp' | 'pagamentos' | 'split' | 'avisos' | 'processo' | 'agenda' | 'followup' | 'ia' | 'usuarios';
+const ABAS: { id: Aba; nome: string; desc: string; icon: any }[] = [
+  { id: 'whatsapp', nome: 'WhatsApp', desc: 'Número conectado ao atendimento da IA.', icon: Smartphone },
+  { id: 'pagamentos', nome: 'Pagamentos', desc: 'Cobrança pelo Asaas, custo do produto e webhook.', icon: Wallet },
+  { id: 'split', nome: 'Split e comissões', desc: 'Quem recebe a comissão de cada pagamento do Limpa Nome.', icon: HandCoins },
+  { id: 'avisos', nome: 'Avisos aos clientes', desc: 'Lembretes de parcela e avisos de atraso no WhatsApp.', icon: BellRing },
+  { id: 'processo', nome: 'Andamento do processo', desc: 'Etapas do Limpa Nome e a mensagem de cada uma.', icon: Scale },
+  { id: 'agenda', nome: 'Agenda do especialista', desc: 'Horários que a IA pode oferecer para a reunião no Meet.', icon: CalendarDays },
+  { id: 'followup', nome: 'Follow-up', desc: 'Lembretes para quem parou de responder.', icon: MessageCircleReply },
+  { id: 'ia', nome: 'Atendimento da IA', desc: 'Regras de intervenção humana, alertas e áudio.', icon: Bot },
+  { id: 'usuarios', nome: 'Usuários do CRM', desc: 'Quem pode entrar no CRM.', icon: Users },
 ];
 
-function Campo({ ctx, c }: { ctx: Ctx; c: typeof CAMPOS[number] }) {
-  const atual = ctx.snap.config[c.chave]?.valor;
-  const inicial = c.tipo === 'json' ? JSON.stringify(atual ?? null, null, 1) : c.tipo === 'lista' ? (Array.isArray(atual) ? atual.join('\n') : '') : atual ?? '';
-  const [v, setV] = useState<any>(inicial);
-  const [erro, setErro] = useState('');
-  useEffect(() => setV(inicial), [JSON.stringify(atual)]);
-  const salvar = async () => {
-    try {
-      let valor: any = v;
-      if (c.tipo === 'json') valor = JSON.parse(v);
-      if (c.tipo === 'numero') valor = Number(v);
-      if (c.tipo === 'lista') valor = String(v).split('\n').map(s => s.replace(/\D/g, '')).filter(Boolean).map(s => s.length <= 11 ? '55' + s : s);
-      await ctx.api.salvarConfig(c.chave, valor); setErro(''); ctx.toast('Configuração salva'); ctx.recarregar();
-    } catch (e: any) { setErro(e.message); }
+function lerAba(): Aba { try { const a = localStorage.getItem('adv_cfg_aba') as Aba; return ABAS.some(x => x.id === a) ? a : 'whatsapp'; } catch { return 'whatsapp'; } }
+
+export default function Config({ ctx }: { ctx: Ctx }) {
+  const [aba, setAba] = useState<Aba>(lerAba());
+  const ir = (a: Aba) => { setAba(a); try { localStorage.setItem('adv_cfg_aba', a); } catch { /* sem storage */ } };
+  const cfg = ctx.snap.config;
+  const asaas = cfg.asaas_ativo?.valor === true;
+  const prod = String(cfg.asaas_base_url?.valor || '').includes('api.asaas.com') && !String(cfg.asaas_base_url?.valor || '').includes('sandbox');
+  const benef: any[] = Array.isArray(cfg.split_beneficiarios?.valor) ? cfg.split_beneficiarios.valor : [];
+  const totalSplit = benef.reduce((a, b) => a + Number(b.percentual || 0), 0);
+  const status: Partial<Record<Aba, { txt: string; cls: string }>> = {
+    pagamentos: asaas ? { txt: prod ? 'Asaas · produção' : 'Asaas · teste', cls: prod ? 'ok' : 'warn' } : { txt: 'Links fixos', cls: 'gray' },
+    split: { txt: `${benef.length} · ${totalSplit.toLocaleString('pt-BR')}%`, cls: benef.some(b => !b.walletId) ? 'warn' : 'info' },
+    followup: Array.isArray(cfg.followup_horas?.valor) && cfg.followup_horas.valor.length ? { txt: `${cfg.followup_horas.valor.length} lembretes`, cls: 'info' } : { txt: 'Desligado', cls: 'gray' },
   };
+  const atual = ABAS.find(a => a.id === aba)!;
+
   return (
-    <div className="field" style={{ marginBottom: 16 }}>
-      <label>{c.nome}</label>
-      {c.tipo === 'bool' ? <select className="input" value={String(v)} onChange={e => setV(e.target.value === 'true')}><option value="true">Sim</option><option value="false">Não</option></select>
-        : c.tipo === 'audio' ? <select className="input" value={v} onChange={e => setV(e.target.value)}><option value="espelhar">Quando o lead mandar áudio</option><option value="sempre">Sempre que possível</option><option value="nunca">Nunca (só texto)</option></select>
-        : c.tipo === 'json' || c.tipo === 'lista' ? <textarea className="input" rows={c.tipo === 'lista' ? 3 : 4} style={{ fontFamily: 'monospace', fontSize: 12 }} value={v} onChange={e => setV(e.target.value)} />
-        : <input className="input" type={c.tipo === 'numero' ? 'number' : 'text'} value={v} onChange={e => setV(e.target.value)} />}
-      {c.ajuda && <span className="small muted">{c.ajuda}</span>}
-      {erro && <span className="small" style={{ color: 'var(--bad)' }}>{erro}</span>}
-      <div><button className="btn sm" onClick={salvar}>Salvar</button></div>
+    <div className="page cfg">
+      <nav className="cfg-tabs">
+        {ABAS.map(a => (
+          <button key={a.id} className={'cfg-tab' + (aba === a.id ? ' on' : '')} onClick={() => ir(a.id)}>
+            <a.icon size={16} /><span>{a.nome}</span>
+            {status[a.id] && <em className={'pill ' + status[a.id]!.cls}>{status[a.id]!.txt}</em>}
+          </button>
+        ))}
+      </nav>
+      <div className="cfg-body">
+        <header className="cfg-head"><h2><atual.icon size={20} /> {atual.nome}</h2><p>{atual.desc}</p></header>
+        {aba === 'whatsapp' && <WhatsappConexao ctx={ctx} />}
+        {aba === 'pagamentos' && <PagamentosConfig ctx={ctx} />}
+        {aba === 'split' && <SplitConfig ctx={ctx} />}
+        {aba === 'avisos' && <AvisosConfig ctx={ctx} />}
+        {aba === 'processo' && <ProcessoConfig ctx={ctx} />}
+        {aba === 'agenda' && <div className="sem-titulo"><AgendaEditor ctx={ctx} /></div>}
+        {aba === 'followup' && <div className="sem-titulo"><FollowupEditor ctx={ctx} /></div>}
+        {aba === 'ia' && <IaConfig ctx={ctx} />}
+        {aba === 'usuarios' && <UsuariosConfig ctx={ctx} />}
+      </div>
     </div>
   );
 }
 
-export default function Config({ ctx }: { ctx: Ctx }) {
+function IaConfig({ ctx }: { ctx: Ctx }) {
+  const cfg = ctx.snap.config;
+  const [min, setMin] = useState<number>(Number(cfg.minutos_retorno_humano?.valor ?? 15));
+  const [equipe, setEquipe] = useState<string>(Array.isArray(cfg.whatsapp_equipe?.valor) ? cfg.whatsapp_equipe.valor.join('\n') : '');
+  const [exigir, setExigir] = useState<boolean>(cfg.exigir_pagamento_para_agendar?.valor !== false);
+  const [audio, setAudio] = useState<string>(cfg.audio_modo?.valor || 'espelhar');
+  const [voz, setVoz] = useState<string>(cfg.elevenlabs_voice_id?.valor || '');
+  const [erro, setErro] = useState('');
+  const salvar = async () => {
+    if (!(min >= 1)) return setErro('Os minutos precisam ser 1 ou mais.');
+    try {
+      await ctx.api.salvarConfig('minutos_retorno_humano', Number(min));
+      await ctx.api.salvarConfig('whatsapp_equipe', equipe.split('\n').map(s => s.replace(/\D/g, '')).filter(Boolean).map(s => (s.length <= 11 ? '55' + s : s)));
+      await ctx.api.salvarConfig('exigir_pagamento_para_agendar', exigir);
+      await ctx.api.salvarConfig('audio_modo', audio);
+      await ctx.api.salvarConfig('elevenlabs_voice_id', voz.trim());
+      setErro(''); ctx.toast('Atendimento salvo'); ctx.recarregar();
+    } catch (e: any) { setErro(e.message); }
+  };
+  return <>
+    <Caixa titulo="Quando um humano assume" desc="Se alguém da equipe responder pelo número, a IA para naquela conversa.">
+      <div className="cfg-grid">
+        <div className="field"><label>A IA volta depois de (minutos) <Dica t="Tempo sem mensagem do humano para a IA retomar a conversa." /></label>
+          <input className="input" type="number" min={1} value={min} onChange={e => setMin(Number(e.target.value))} /></div>
+        <div className="field"><label>Reunião do Diagnóstico</label>
+          <select className="input" value={String(exigir)} onChange={e => setExigir(e.target.value === 'true')}><option value="true">Só agendar depois do pagamento</option><option value="false">Pode agendar antes</option></select></div>
+      </div>
+    </Caixa>
+    <Caixa titulo="Alertas para a equipe" desc="Recebem aviso quando a IA para de responder, pagamento informado, reunião marcada ou erro.">
+      <div className="field"><label>WhatsApp da equipe (um por linha, com DDD)</label>
+        <textarea className="input" rows={3} value={equipe} onChange={e => setEquipe(e.target.value)} placeholder="79 99999-9999" /></div>
+    </Caixa>
+    <Caixa titulo="Respostas em áudio" desc="Voz clonada no ElevenLabs. Links e valores sempre vão por escrito.">
+      <div className="cfg-grid">
+        <div className="field"><label>Quando responder em áudio</label>
+          <select className="input" value={audio} onChange={e => setAudio(e.target.value)}><option value="espelhar">Quando o lead mandar áudio</option><option value="sempre">Sempre que possível</option><option value="nunca">Nunca (só texto)</option></select></div>
+        <div className="field"><label>ID da voz no ElevenLabs</label><input className="input mono" value={voz} onChange={e => setVoz(e.target.value)} placeholder="vazio = só texto" /></div>
+      </div>
+    </Caixa>
+    <div className="cfg-save">{erro && <div className="err">{erro}</div>}<button className="btn primary" onClick={salvar}>Salvar</button></div>
+  </>;
+}
+
+function UsuariosConfig({ ctx }: { ctx: Ctx }) {
   const [usuarios, setUsuarios] = useState<CrmUsuario[]>([]);
   const [novo, setNovo] = useState({ email: '', nome: '', papel: 'advance' });
   const carregar = () => ctx.api.usuarios().then(setUsuarios).catch(() => {});
   useEffect(() => { carregar(); }, []);
-  return (
-    <div className="page">
-      <WhatsappConexao ctx={ctx} />
-      <FinanceiroConfig ctx={ctx} />
-      <div className="grid g2">
-        <div>
-          <div className="card">
-            <h3>Regras e integrações do SDR</h3>
-            {CAMPOS.map(c => <Campo key={c.chave} ctx={ctx} c={c} />)}
+  const PAPEL: Record<string, string> = { advance: 'Advance (admin)', ampliize: 'Ampliize (admin)', closer: 'Closer' };
+  return <>
+    <Caixa titulo="Quem acessa" desc="O e-mail precisa estar aqui e ter usuário com senha no Supabase (Authentication → Users).">
+      <div className="tabela-cfg users">
+        <div className="th"><span>Pessoa</span><span>Papel</span><span>Situação</span><span /></div>
+        {usuarios.map(u => (
+          <div className="tr" key={u.email}>
+            <span><b>{u.nome || u.email}</b><div className="small muted">{u.email}</div></span>
+            <span className="small">{PAPEL[u.papel] || u.papel}</span>
+            <span>{u.ativo ? <span className="pill ok">Ativo</span> : <span className="pill gray">Inativo</span>}</span>
+            <button className="btn sm" onClick={async () => { await ctx.api.salvarUsuario({ ...u, ativo: !u.ativo }); carregar(); }}>{u.ativo ? 'Desativar' : 'Ativar'}</button>
           </div>
-          <div className="card" style={{ marginTop: 14 }}>
-            <h3>Quem acessa o CRM</h3>
-            <p className="small muted" style={{ marginTop: -6 }}>O e-mail precisa estar aqui <b>e</b> ter usuário criado no Supabase (Authentication → Users).</p>
-            {usuarios.map(u => (
-              <div className="list-row" key={u.email}><span>{u.nome || u.email}<div className="small muted">{u.email} · {u.papel}</div></span>
-                <button className="btn sm" onClick={async () => { await ctx.api.salvarUsuario({ ...u, ativo: !u.ativo }); carregar(); }}>{u.ativo ? 'Desativar' : 'Ativar'}</button></div>
-            ))}
-            <div className="row wrap" style={{ marginTop: 10 }}>
-              <input className="input" placeholder="email" value={novo.email} onChange={e => setNovo({ ...novo, email: e.target.value })} />
-              <input className="input" placeholder="nome" value={novo.nome} onChange={e => setNovo({ ...novo, nome: e.target.value })} style={{ width: 120 }} />
-              <select className="input" value={novo.papel} onChange={e => setNovo({ ...novo, papel: e.target.value })}><option value="advance">Advance</option><option value="closer">Closer</option><option value="ampliize">Ampliize</option></select>
-              <button className="btn primary sm" onClick={async () => { if (!novo.email) return; await ctx.api.salvarUsuario({ ...novo, ativo: true }); setNovo({ email: '', nome: '', papel: 'advance' }); carregar(); }}>Adicionar</button>
-            </div>
-          </div>
-        </div>
-        <div>
-          <AgendaEditor ctx={ctx} />
-          <FollowupEditor ctx={ctx} />
-        </div>
+        ))}
       </div>
-    </div>
-  );
+    </Caixa>
+    <Caixa titulo="Adicionar pessoa" desc="Admins podem autorizar desconto na quitação. Closer não.">
+      <div className="cfg-grid">
+        <div className="field"><label>E-mail</label><input className="input" placeholder="email@empresa.com" value={novo.email} onChange={e => setNovo({ ...novo, email: e.target.value })} /></div>
+        <div className="field"><label>Nome</label><input className="input" value={novo.nome} onChange={e => setNovo({ ...novo, nome: e.target.value })} /></div>
+        <div className="field"><label>Papel</label><select className="input" value={novo.papel} onChange={e => setNovo({ ...novo, papel: e.target.value })}><option value="advance">Advance (admin)</option><option value="closer">Closer</option><option value="ampliize">Ampliize (admin)</option></select></div>
+      </div>
+      <div className="row end"><button className="btn primary" onClick={async () => { if (!novo.email.trim()) return; await ctx.api.salvarUsuario({ ...novo, ativo: true }); setNovo({ email: '', nome: '', papel: 'advance' }); carregar(); ctx.toast('Pessoa adicionada'); }}>Adicionar</button></div>
+    </Caixa>
+  </>;
 }
