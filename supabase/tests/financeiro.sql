@@ -120,10 +120,9 @@ begin
   assert (select status from contratos where lead_id = v_lead and status <> 'cancelado') = 'ativo';
   assert (select status from cobrancas where asaas_payment_id = 'pay_1') = 'confirmada';
   assert (select count(*) from comissoes c join cobrancas b on b.id = c.cobranca_id where b.asaas_payment_id = 'pay_1' and c.status = 'a_liquidar') = 2;
+  -- TAP: as 5 parcelas esperam o nome limpo (sem data)
   assert (select count(*) from cobrancas c join contratos ct on ct.id = c.contrato_id
-           where ct.status = 'ativo' and c.status = 'planejada' and c.vencimento is not null) = 5, 'parcelas agendadas';
-  assert (select min(vencimento) from cobrancas c join contratos ct on ct.id = c.contrato_id
-           where ct.status = 'ativo' and c.status = 'planejada') = (hoje() + interval '1 month')::date, '1ª parcela em 1 mês';
+           where ct.status = 'ativo' and c.status = 'planejada' and c.vencimento is null) = 5, 'parcelas aguardando nome limpo';
   assert (select pagamento_status from leads where id = v_lead) = 'confirmado';
   assert (select etapa from leads where id = v_lead) = 'pago';
   select count(*) into n_msgs from mensagens where lead_id = v_lead and texto like '[SISTEMA] Pagamento%';
@@ -144,6 +143,9 @@ declare r jsonb; v_cob uuid; v_ct uuid;
 begin
   select contrato_id into v_ct from cobrancas where asaas_payment_id = 'pay_1';
   select id into v_cob from cobrancas where contrato_id = v_ct and numero = 2;
+  update contratos set processo_etapa = 'baixa' where id = v_ct;
+  assert liberar_parcela_final_2x(v_ct) = 5, 'libera as 5 parcelas';
+  assert (select vencimento from cobrancas where contrato_id = v_ct and numero = 3) = (hoje() + 2 + interval '1 month')::date, 'a cada 30 dias';
   update cobrancas set vencimento = hoje() + 3 where id = v_cob;
   update cobrancas set criado_em = now() - interval '5 minutes' where id = v_cob;
   r := asaas_sincronizacao();
@@ -152,8 +154,8 @@ begin
   perform asaas_reservar_cobranca(v_cob);
   perform asaas_cobranca_criada(v_cob, jsonb_build_object('id','pay_2','invoiceUrl','https://sandbox.asaas.com/i/2',
             'dueDate', to_char(hoje()+3,'YYYY-MM-DD')), 'rotina');
-  -- parcela (não é a 1ª) criada pela rotina não manda link na hora: o lembrete cuida disso
-  assert (select count(*) from notificacoes where cobranca_id = v_cob) = 0;
+  -- parcela com vencimento próximo (liberada com o nome limpo) manda o link na hora
+  assert (select count(*) from notificacoes where cobranca_id = v_cob and tipo = 'link_pagamento') = 1, 'link enviado';
   -- lembrete D-3
   perform notificacoes_devidas();
   assert (select count(*) from notificacoes where cobranca_id = v_cob and tipo = 'lembrete') = 1, 'lembrete criado';
@@ -161,7 +163,7 @@ begin
          'texto: ' || (select texto from notificacoes where cobranca_id = v_cob and tipo = 'lembrete');
   assert (select status from notificacoes where cobranca_id = v_cob and tipo = 'lembrete') = 'enviada', 'devolvida para envio';
   perform notificacoes_devidas();
-  assert (select count(*) from notificacoes where cobranca_id = v_cob) = 1, 'não repete';
+  assert (select count(*) from notificacoes where cobranca_id = v_cob and tipo = 'lembrete') = 1, 'não repete';
   -- vence
   perform asaas_registrar_evento(jsonb_build_object('id','evt_4','event','PAYMENT_OVERDUE','payment', jsonb_build_object('id','pay_2')));
   assert (select status from cobrancas where id = v_cob) = 'vencida';
@@ -359,6 +361,42 @@ begin
   assert (select vencimento from cobrancas where contrato_id = v_ct and numero = 2) = hoje() + 2, 'vence em 2 dias';
   perform asaas_sincronizacao();
   assert (select status from cobrancas where contrato_id = v_ct and numero = 2) = 'a_gerar', 'entra na fila do Asaas';
+end $$;
+
+\echo 'F18. Combo, Rating sozinho, data escolhida, custo por serviço e conversa aberta pela equipe'
+do $$
+declare r jsonb; v_conv uuid; v_ct uuid; v_c1 uuid;
+begin
+  update config set valor = '{"valor":197,"walletId":"","servicos":["limpa_nome","combo","rating"],"por_servico":{"limpa_nome":197,"combo":197,"rating":150}}' where chave = 'custo_produto';
+  insert into leads (telefone, nome, cpf_cnpj) values ('5579990000606', 'Carla Combo', '52998224725');
+  insert into conversas (lead_id, telefone) select id, telefone from leads where telefone = '5579990000606' returning id into v_conv;
+  -- combo TAP com pagamento no dia escolhido
+  r := iniciar_contratacao(v_conv, 'combo', 'tap', 'ia', hoje() + 10);
+  assert (r->>'ok')::boolean and (r->>'valor')::numeric = 597 and (r->>'total')::numeric = 2082, 'combo tap: ' || r;
+  assert r->>'vencimento' = to_char(hoje() + 10, 'DD/MM/YYYY'), 'data escolhida';
+  v_c1 := (r->>'cobranca_id')::uuid; select contrato_id into v_ct from cobrancas where id = v_c1;
+  assert (select custo_produto from contratos where id = v_ct) = 197;
+  r := asaas_reservar_cobranca(v_c1);
+  assert r#>>'{cobranca,description}' like '%Limpa Nome + Rating%', 'descrição: ' || (r#>>'{cobranca,description}');
+  assert (select sum((x->>'fixedValue')::numeric) from jsonb_array_elements(r#>'{cobranca,split}') x) = 100, 'comissão sobre 597-197';
+  -- rating sozinho: sem TAP; à vista 997, custo 150
+  r := iniciar_contratacao(v_conv, 'rating', 'tap');
+  assert (r->>'ok')::boolean is not true, 'rating não tem TAP';
+  r := iniciar_contratacao(v_conv, 'rating', 'avista');
+  assert (r->>'valor')::numeric = 997, 'rating à vista: ' || r;
+  assert (select custo_produto from contratos where id = (select contrato_id from cobrancas where id = (r->>'cobranca_id')::uuid)) = 150;
+  r := iniciar_contratacao(v_conv, 'rating', '2x');
+  assert (r->>'total')::numeric = 1200 and r->>'condicao' like '%entrega do serviço%', 'rating 2x: ' || r;
+  -- dados do contrato
+  r := atualizar_lead(v_conv, '{"endereco":"Rua A, 10, Aracaju/SE","email":"carla@ex.com"}');
+  assert jsonb_array_length(r->'dados_contrato_faltando') = 0, 'dados completos: ' || r;
+  -- conversa aberta pela equipe: IA fica fora e o nome "Advance" não vira nome do lead
+  r := registrar_mensagem_entrada('{"telefone":"5579990000707","message_id":"eq1","from_me":true,"texto":"Olá, chegou sua vez!","push_name":"Advance"}');
+  assert (select nome_whatsapp from leads where telefone = '5579990000707') is null, 'sem nome Advance';
+  assert (select assumida_manual from conversas where telefone = '5579990000707'), 'equipe assume';
+  r := registrar_mensagem_entrada('{"telefone":"5579990000707","message_id":"ld1","texto":"Sim","push_name":"Joana"}');
+  assert r->>'acao' = 'humano', 'IA não responde: ' || r;
+  assert (select nome_whatsapp from leads where telefone = '5579990000707') = 'Joana';
 end $$;
 
 \echo 'OK: todos os testes do financeiro passaram'

@@ -15,7 +15,7 @@ function Kpi({ icon: I, lbl, val, hint, cor }: any) {
 
 export default function Clientes({ ctx }: { ctx: Ctx }) {
   const { contratos, cobrancas, comissoes, config } = ctx.snap;
-  const [servico, setServico] = useState<'limpa_nome' | 'diagnostico'>('limpa_nome');
+  const [servico, setServico] = useState<'limpa_nome' | 'combo' | 'rating' | 'diagnostico'>('limpa_nome');
   const [filtro, setFiltro] = useState('abertos');
   const [busca, setBusca] = useState('');
   const [aberto, setAberto] = useState<string | null>(null);
@@ -67,7 +67,7 @@ export default function Clientes({ ctx }: { ctx: Ctx }) {
   return (
     <div className="page">
       <div className="toolbar">
-        <div className="seg">{([['limpa_nome', 'Limpa Nome'], ['diagnostico', 'Diagnóstico']] as const).map(([k, n]) => <button key={k} className={servico === k ? 'on' : ''} onClick={() => setServico(k)}>{n}</button>)}</div>
+        <div className="seg">{([['limpa_nome', 'Limpa Nome'], ['combo', 'Combo + Rating'], ['rating', 'Rating'], ['diagnostico', 'Diagnóstico']] as const).map(([k, n]) => <button key={k} className={servico === k ? 'on' : ''} onClick={() => setServico(k)}>{n}</button>)}</div>
         {asaasAtivo ? <span className="pill ok"><span className="dot" /> Cobrança pelo Asaas ligada{String(config.asaas_base_url?.valor || '').includes('sandbox') ? ' · SANDBOX (teste)' : ''}</span>
           : <span className="pill warn">Asaas desligado: a IA usa os links fixos e nada aparece aqui</span>}
         <button className="btn primary sm" style={{ marginLeft: 'auto' }} onClick={() => setNovo(true)} disabled={!asaasAtivo} title={asaasAtivo ? '' : 'Ligue o Asaas em Configurações'}><Plus size={14} /> Novo contrato</button>
@@ -84,7 +84,7 @@ export default function Clientes({ ctx }: { ctx: Ctx }) {
         <div className="card">
           <h3><HandCoins size={16} /> Comissões do split <span className="sub">{totalPct.toLocaleString('pt-BR')}% do recebido após o custo</span></h3>
           {servico === 'diagnostico' && <p className="small muted">O Diagnóstico não tem split.</p>}
-          {servico === 'limpa_nome' && m.porBenef.map(b => (
+          {servico !== 'diagnostico' && m.porBenef.map(b => (
             <div key={b.nome} className="list-row" style={{ alignItems: 'flex-start' }}>
               <span className="b">{b.nome}</span>
               <span style={{ textAlign: 'right' }}>
@@ -167,7 +167,7 @@ function Detalhe({ ctx, ct, etapas, fechar }: { ctx: Ctx; ct: Contrato; etapas: 
   const [erro, setErro] = useState('');
   const [ocupado, setOcupado] = useState(false);
   const st = STATUS_CONTRATO[ct.status];
-  const benefCfg: { nome: string; percentual: number }[] = ct.servico === 'limpa_nome' && Array.isArray(ctx.snap.config.split_beneficiarios?.valor) ? ctx.snap.config.split_beneficiarios.valor : [];
+  const benefCfg: { nome: string; percentual: number }[] = ct.servico !== 'diagnostico' && Array.isArray(ctx.snap.config.split_beneficiarios?.valor) ? ctx.snap.config.split_beneficiarios.valor : [];
   const benefs = Array.from(new Set([...coms.map(c => c.beneficiario), ...benefCfg.map(b => b.nome)]));
   const futuras = ['ativo', 'inadimplente'].includes(ct.status) ? cobs.filter(c => ['planejada', 'a_gerar', 'gerando'].includes(c.status)) : [];
   const primeiro = (nome: string) => (ct.nome || ct.nome_whatsapp || '').split(' ')[0] || nome;
@@ -203,7 +203,7 @@ function Detalhe({ ctx, ct, etapas, fechar }: { ctx: Ctx; ct: Contrato; etapas: 
 
         <div className="row wrap" style={{ marginTop: 14, gap: 8 }}>
           <button className="btn sm" onClick={() => { const c = ctx.snap.conversas.find(c => c.lead_id === ct.lead_id); if (c) ctx.abrirConversa(c.id); }}><MessageCircle size={14} /> Abrir conversa</button>
-          {ct.servico === 'limpa_nome' && <button className={'btn sm' + (modo === 'andamento' ? ' primary' : '')} onClick={() => setModo(modo === 'andamento' ? '' : 'andamento')}><Scale size={14} /> Atualizar andamento do processo</button>}
+          {ct.servico !== 'diagnostico' && <button className={'btn sm' + (modo === 'andamento' ? ' primary' : '')} onClick={() => setModo(modo === 'andamento' ? '' : 'andamento')}><Scale size={14} /> Atualizar andamento do processo</button>}
           {podeQuitar && <button className={'btn sm' + (modo === 'quitar' ? ' primary' : '')} onClick={() => setModo(modo === 'quitar' ? '' : 'quitar')}><BadgeCheck size={14} /> Quitar saldo devedor</button>}
         </div>
 
@@ -215,7 +215,7 @@ function Detalhe({ ctx, ct, etapas, fechar }: { ctx: Ctx; ct: Contrato; etapas: 
               <input className="input" value={detalhe} onChange={e => setDetalhe(e.target.value)} placeholder="Ex.: Número do processo: 0001234-56.2026.8.25.0001." /></div>
             <label className="small b" style={{ display: 'flex', gap: 6, alignItems: 'center', marginTop: 10 }}><input type="checkbox" checked={enviar} onChange={e => setEnviar(e.target.checked)} /> Avisar o cliente no WhatsApp</label>
             {enviar && <div className="msg out" style={{ marginTop: 8, maxWidth: '100%', whiteSpace: 'pre-wrap' }}>{preview}</div>}
-            {ct.modalidade === '2x' && (etapa === 'baixa' || etapa === 'concluido') && cobs.some(c => c.status === 'planejada') && <div className="aviso warn">Ao salvar, a 2ª parcela de R$ 400 é gerada no Asaas (vence em 2 dias) e o cliente recebe o link.</div>}
+            {(ct.modalidade === '2x' || ct.modalidade === 'tap') && (etapa === 'baixa' || etapa === 'concluido') && cobs.some(c => c.status === 'planejada') && <div className="aviso warn">Ao salvar, as parcelas que esperavam o nome limpo são liberadas: a próxima vence em 2 dias e o cliente recebe o link; as outras a cada 30 dias.</div>}
             <div className="row end" style={{ marginTop: 10 }}><button className="btn primary" disabled={ocupado} onClick={() => acao(() => ctx.api.andamento(ct.id, etapa, detalhe, enviar), enviar ? 'Andamento salvo · mensagem vai em até 1 minuto' : 'Andamento salvo')}>Salvar andamento</button></div>
           </div>
         )}
@@ -253,7 +253,7 @@ function Detalhe({ ctx, ct, etapas, fechar }: { ctx: Ctx; ct: Contrato; etapas: 
           })}
         </>}
 
-        {ct.servico === 'limpa_nome' && <>
+        {ct.servico !== 'diagnostico' && <>
           <h4 style={{ margin: '18px 0 6px' }}>Processo</h4>
           <div className="small">{etapas.find(e => e.id === ct.processo_etapa)?.nome || 'Ainda sem andamento registrado'}{ct.processo_detalhe ? ' · ' + ct.processo_detalhe : ''}{ct.processo_atualizado_em ? <span className="muted"> · {dataHora(ct.processo_atualizado_em)}</span> : null}</div>
         </>}
@@ -285,7 +285,7 @@ function LinhaCobranca({ ctx, c, todas, modalidade }: { ctx: Ctx; c: Cobranca; t
     <tr style={{ opacity: c.status === 'cancelada' || c.status === 'a_cancelar' ? 0.55 : 1 }}>
       <td className="b">{rotuloCobranca(c, todas, modalidade)}</td>
       <td>{brl(c.valor)}{c.valor_estornado ? <div className="small" style={{ color: 'var(--bad)' }}>estornado {brl(c.valor_estornado)}</div> : null}</td>
-      <td>{c.vencimento ? dia(c.vencimento) : modalidade === '2x' && c.numero > 1 ? <span className="small muted">quando o nome estiver limpo</span> : '—'}</td>
+      <td>{c.vencimento ? dia(c.vencimento) : (modalidade === '2x' || modalidade === 'tap') && c.numero > 1 ? <span className="small muted">quando o nome estiver limpo</span> : '—'}</td>
       <td><span className={'pill ' + st.cls}>{st.nome}</span>{c.erro && c.status === 'a_gerar' ? <div className="small" style={{ color: 'var(--bad)' }} title={c.erro}>falha ao gerar, tentando de novo</div> : null}</td>
       <td className="small">{c.pago_em ? <>{dia(c.pago_em)} · {c.forma_paga === 'PIX' ? 'PIX' : c.forma_paga === 'BOLETO' ? 'boleto' : c.forma_paga || ''}</> : '—'}</td>
       <td style={{ whiteSpace: 'nowrap' }}>
@@ -303,7 +303,7 @@ function NovoContrato({ ctx, fechar }: { ctx: Ctx; fechar: () => void }) {
   const [modalidade, setModalidade] = useState('avista');
   const [erro, setErro] = useState('');
   const [ocupado, setOcupado] = useState(false);
-  const planos: Record<string, { parcelas: number[] }> = ctx.snap.config.planos_limpa_nome?.valor || {};
+  const planos: Record<string, { parcelas: number[] }> = ctx.snap.config[servico === 'combo' ? 'planos_combo' : servico === 'rating' ? 'planos_rating' : 'planos_limpa_nome']?.valor || {};
   const achados = busca.trim().length < 2 ? [] : ctx.snap.leads.filter(l => nomeLead(l).toLowerCase().includes(busca.toLowerCase()) || l.telefone.includes(busca.replace(/\D/g, '') || '§')).slice(0, 8);
   const lead = ctx.snap.leads.find(l => l.id === leadId);
   const parcelas = servico === 'diagnostico' ? [Number(ctx.snap.config.valor_diagnostico?.valor || 67)] : planos[modalidade]?.parcelas || [];
@@ -316,7 +316,7 @@ function NovoContrato({ ctx, fechar }: { ctx: Ctx; fechar: () => void }) {
     <div className="modal-bg" onClick={fechar}>
       <div className="modal" style={{ maxWidth: 520 }} onClick={e => e.stopPropagation()}>
         <h3>Novo contrato</h3>
-        <p>O cliente recebe o link de pagamento (PIX ou boleto) no WhatsApp em até 2 minutos. As próximas parcelas são geradas mês a mês.</p>
+        <p>O cliente recebe o link de pagamento (PIX ou boleto) no WhatsApp em até 2 minutos. No 2x e na TAP, as parcelas seguintes só são cobradas quando o processo for marcado como "Restrições baixadas" (ou concluído), depois a cada 30 dias.</p>
         {!lead ? <>
           <input className="input" style={{ width: '100%' }} autoFocus placeholder="Buscar lead por nome ou telefone" value={busca} onChange={e => setBusca(e.target.value)} />
           {achados.map(l => <div key={l.id} className="list-row click" style={{ cursor: 'pointer' }} onClick={() => setLeadId(l.id)}><span>{nomeLead(l)}<div className="small muted">{telefone(l.telefone)}{l.cpf_cnpj ? '' : ' · sem CPF'}</div></span><span className="small muted">escolher</span></div>)}
@@ -324,10 +324,10 @@ function NovoContrato({ ctx, fechar }: { ctx: Ctx; fechar: () => void }) {
           <div className="list-row"><span className="b">{nomeLead(lead)}<div className="small muted">{telefone(lead.telefone)}</div></span><button className="btn sm" onClick={() => setLeadId('')}>Trocar</button></div>
           {(!lead.nome || !lead.cpf_cnpj) && <div className="err">Este lead ainda não tem nome completo e CPF/CNPJ. Preencha na ficha do lead (página Leads) antes.</div>}
           <div className="row wrap" style={{ marginTop: 10 }}>
-            <div className="field"><label>Serviço</label><select className="input" value={servico} onChange={e => setServico(e.target.value)}><option value="limpa_nome">Limpa Nome</option><option value="diagnostico">Diagnóstico</option></select></div>
-            {servico === 'limpa_nome' && <div className="field"><label>Modalidade</label><select className="input" value={modalidade} onChange={e => setModalidade(e.target.value)}><option value="avista">À vista</option><option value="2x">2x de R$ 400</option><option value="tap">TAP · entrada + 5x</option></select></div>}
+            <div className="field"><label>Serviço</label><select className="input" value={servico} onChange={e => setServico(e.target.value)}><option value="limpa_nome">Limpa Nome</option><option value="combo">Limpa Nome + Rating</option><option value="rating">Rating (nome já limpo)</option><option value="diagnostico">Diagnóstico</option></select></div>
+            {servico !== 'diagnostico' && <div className="field"><label>Modalidade</label><select className="input" value={modalidade} onChange={e => setModalidade(e.target.value)}><option value="avista">À vista</option><option value="2x">2x</option>{servico !== 'rating' && <option value="tap">TAP · entrada + 5x</option>}</select></div>}
           </div>
-          <div className="small muted" style={{ marginTop: 8 }}>{parcelas.map((v, i) => `${i === 0 ? 'Agora' : `Mês ${i}`}: ${brl(v)}`).join(' · ')} · Total {brl(parcelas.reduce((a, b) => a + b, 0))}</div>
+          <div className="small muted" style={{ marginTop: 8 }}>{parcelas.map((v, i) => `${i === 0 ? 'Agora' : i === 1 ? (servico === 'rating' ? 'Na entrega' : 'Com o nome limpo') : `+${i - 1} mês`}: ${brl(v)}`).join(' · ')} · Total {brl(parcelas.reduce((a, b) => a + b, 0))}</div>
         </>}
         {erro && <div className="err" style={{ marginTop: 8 }}>{erro}</div>}
         <div className="row end" style={{ marginTop: 14 }}>

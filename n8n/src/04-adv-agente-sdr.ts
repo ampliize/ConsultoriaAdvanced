@@ -55,7 +55,7 @@ const kb = tool({
     name: 'consultar_base_conhecimento',
     parameters: {
       descriptionType: 'manual',
-      toolDescription: 'Respostas aprovadas pela Advance sobre os serviços (Diagnóstico e Limpa Nome): o que é, passo a passo, preço, prazo, documentos, contrato, garantia, o que pode e não pode prometer e como responder objeções. Use ANTES de responder dúvidas factuais ou objeções. Quando a resposta começar com ORIENTAÇÃO, siga-a com suas palavras. Lista vazia: não invente; transfira.',
+      toolDescription: 'Respostas aprovadas pela Advance sobre os serviços (Diagnóstico, Limpa Nome, Combo Limpa Nome + Rating e Rating): o que é, passo a passo, preço, prazo, documentos, contrato, garantia, o que pode e não pode prometer e como responder objeções. Use ANTES de responder dúvidas factuais ou objeções. Quando a resposta começar com ORIENTAÇÃO, siga-a com suas palavras. Lista vazia: não invente; transfira.',
       operation: 'executeQuery',
       query: 'select public.buscar_kb_json($1) as respostas',
       options: { queryReplacement: expr("{{ [ $fromAI('pergunta', 'Dúvida do lead em poucas palavras-chave, ex.: preço limpa nome, garantia, prazo, documentos', 'string') ] }}") }
@@ -72,10 +72,10 @@ const ficha = tool({
     name: 'atualizar_ficha_lead',
     parameters: {
       descriptionType: 'manual',
-      toolDescription: 'Salva no CRM o que o lead informou. Chame sempre que ele disser nome completo, CPF/CNPJ, e-mail, objetivo, urgência, der o consentimento LGPD, enviar o documento de identificação ou quando o serviço ficar definido. Retorna o que ainda falta para qualificar (faltando) e erros (ex.: cpf_cnpj_invalido). Quando não falta nada, o lead vira QUALIFICADO.',
+      toolDescription: 'Salva no CRM o que o lead informou. Chame sempre que ele disser nome completo, CPF/CNPJ, e-mail, endereço, objetivo, enviar o documento de identificação, quando o serviço ficar definido ou quando você deduzir a urgência. Retorna o que falta para qualificar (faltando), os dados do contrato que faltam (dados_contrato_faltando) e erros (ex.: cpf_cnpj_invalido).',
       operation: 'executeQuery',
       query: 'select public.atualizar_lead($1::uuid, $2::jsonb) as resultado',
-      options: { queryReplacement: expr("{{ [ $('Recebe lote do lead').item.json.conversa_id, $fromAI('dados', 'JSON só com os campos informados agora. Chaves possíveis: nome (nome completo), cpf_cnpj, email, servico (diagnostico|limpa_nome), objetivo (limpar_nome|buscar_credito|entender_negativa|outro), urgencia (alta|media|baixa), consentimento_lgpd (true), documento_recebido (true), resumo (1 frase com a situação do lead). Ex.: {\"nome\":\"Maria Souza Lima\",\"urgencia\":\"alta\"}', 'string') ] }}") }
+      options: { queryReplacement: expr("{{ [ $('Recebe lote do lead').item.json.conversa_id, $fromAI('dados', 'JSON só com os campos informados agora. Chaves possíveis: nome (nome completo), cpf_cnpj, email, endereco (endereço completo com CEP), servico (diagnostico|limpa_nome|combo|rating), objetivo (limpar_nome|buscar_credito|entender_negativa|outro), urgencia (alta|media|baixa), consentimento_lgpd (true), documento_recebido (true), resumo (1 frase com a situação do lead). Ex.: {\"nome\":\"Maria Souza Lima\",\"urgencia\":\"alta\"}', 'string') ] }}") }
     },
     credentials: { postgres: pgCred },
     position: [640, 560]
@@ -88,21 +88,23 @@ const pagamento = tool({
   config: {
     name: 'gerar_link_pagamento',
     parameters: {
-      description: 'Gera o link de pagamento oficial (boleto com PIX, sem cartão) e a condição do serviço escolhido, e move o lead para PROPOSTA. Chame quando o lead aceitar contratar. modalidade: avista, 2x ou tap (avista = R$ 597; 2x = R$ 400 agora e R$ 400 quando o nome estiver limpo; tap = entrada R$ 297 + 5x R$ 150; só no limpa_nome; diagnóstico é sempre avista). Precisa do nome completo e do CPF/CNPJ já salvos. Envie o link exatamente como veio. Se ok=false, siga a orientacao e NUNCA invente link.',
+      description: 'Gera o link de pagamento oficial (boleto com PIX, sem cartão) e move o lead para PROPOSTA. Chame quando o lead escolher a forma de pagamento. servico: diagnostico, limpa_nome, combo (Limpa Nome + Rating) ou rating (só para quem já tem o nome limpo). modalidade: avista, 2x ou tap (rating não tem tap; diagnóstico é sempre avista). vencimento: data em que o lead quer pagar (AAAA-MM-DD), vazio = em 2 dias. Precisa do nome completo e do CPF/CNPJ já salvos. Envie o link exatamente como veio. Se ok=false, siga a orientacao e NUNCA invente link.',
       source: 'database',
       workflowId: { __rl: true, mode: 'id', value: '5i8G5K4B4k7LyuBB', cachedResultName: 'ADV · Contratar' },
       workflowInputs: {
         mappingMode: 'defineBelow',
         value: {
           conversa_id: expr("{{ $('Recebe lote do lead').item.json.conversa_id }}"),
-          servico: expr("{{ $fromAI('servico', 'diagnostico ou limpa_nome', 'string') }}"),
-          modalidade: expr("{{ $fromAI('modalidade', 'avista, 2x ou tap', 'string') }}")
+          servico: expr("{{ $fromAI('servico', 'diagnostico, limpa_nome, combo ou rating', 'string') }}"),
+          modalidade: expr("{{ $fromAI('modalidade', 'avista, 2x ou tap', 'string') }}"),
+          vencimento: expr("{{ $fromAI('vencimento', 'Data em que o lead quer pagar, formato AAAA-MM-DD. Vazio se for para agora.', 'string') }}")
         },
         matchingColumns: [],
         schema: [
           { id: 'conversa_id', displayName: 'conversa_id', required: false, defaultMatch: false, display: true, canBeUsedToMatch: true, type: 'string' },
           { id: 'servico', displayName: 'servico', required: false, defaultMatch: false, display: true, canBeUsedToMatch: true, type: 'string' },
-          { id: 'modalidade', displayName: 'modalidade', required: false, defaultMatch: false, display: true, canBeUsedToMatch: true, type: 'string' }
+          { id: 'modalidade', displayName: 'modalidade', required: false, defaultMatch: false, display: true, canBeUsedToMatch: true, type: 'string' },
+          { id: 'vencimento', displayName: 'vencimento', required: false, defaultMatch: false, display: true, canBeUsedToMatch: true, type: 'string' }
         ],
         attemptToConvertTypes: false,
         convertFieldsToString: false
@@ -198,7 +200,7 @@ const avisar = tool({
     name: 'avisar_equipe',
     parameters: {
       descriptionType: 'manual',
-      toolDescription: 'Avisa a equipe SEM tirar você da conversa. Use no Limpa Nome quando o pagamento e o documento estiverem ok (motivo contrato), para a equipe enviar o contrato digital. Também para qualquer informação importante que a equipe precisa saber (motivo info).',
+      toolDescription: 'Avisa a equipe SEM tirar você da conversa. Use no Limpa Nome, Combo ou Rating quando o pagamento estiver confirmado e os dados do contrato completos (motivo contrato), para a equipe enviar o contrato digital. Também para qualquer informação importante que a equipe precisa saber (motivo info).',
       operation: 'executeQuery',
       query: 'select public.avisar_equipe($1::uuid, $2, $3) as resultado',
       options: { queryReplacement: expr("{{ [ $('Recebe lote do lead').item.json.conversa_id, $fromAI('motivo', 'contrato ou info', 'string'), $fromAI('texto', 'O que a equipe precisa fazer/saber, em 1-2 frases', 'string') ] }}") }

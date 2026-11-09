@@ -2,7 +2,7 @@ export type Etapa = 'novo' | 'em_atendimento' | 'qualificado' | 'proposta' | 'pa
 
 export interface Lead {
   id: string; telefone: string; nome: string | null; nome_whatsapp: string | null; cpf_cnpj: string | null; email: string | null;
-  servico: 'indefinido' | 'diagnostico' | 'limpa_nome'; objetivo: string | null; urgencia: 'alta' | 'media' | 'baixa' | null;
+  servico: 'indefinido' | 'diagnostico' | 'limpa_nome' | 'combo' | 'rating'; objetivo: string | null; urgencia: 'alta' | 'media' | 'baixa' | null;
   etapa: Etapa; motivo_perda: string | null; origem: string; anuncio: any; consentimento_lgpd_em: string | null;
   forma_pagamento: string | null; valor_previsto: number | null; valor_venda: number | null;
   pagamento_status: 'nenhum' | 'link_enviado' | 'informado' | 'confirmado'; documento_recebido: boolean; contrato_assinado: boolean;
@@ -48,7 +48,7 @@ export const ordemEtapa = (e: string) => FUNIL.indexOf(e as Etapa);
 // ---------------------------------------------------------------- financeiro (Asaas + split)
 export type StatusContrato = 'aguardando_pagamento' | 'ativo' | 'inadimplente' | 'quitado' | 'cancelado' | 'estornado';
 export interface Contrato {
-  id: string; lead_id: string; servico: 'diagnostico' | 'limpa_nome'; modalidade: 'avista' | '2x' | 'tap'; valor_total: number;
+  id: string; lead_id: string; servico: 'diagnostico' | 'limpa_nome' | 'combo' | 'rating'; modalidade: 'avista' | '2x' | 'tap'; valor_total: number;
   status: StatusContrato; processo_etapa: string | null; processo_detalhe: string | null; processo_atualizado_em: string | null;
   aderido_em: string | null; quitado_em: string | null; desconto_quitacao: number | null; criado_por: string; criado_em: string;
   nome: string | null; nome_whatsapp: string | null; telefone: string; cpf_cnpj: string | null; email: string | null;
@@ -72,7 +72,7 @@ export interface Notificacao {
   tipo: 'link_pagamento' | 'lembrete' | 'vencida' | 'andamento' | 'quitacao' | 'manual'; texto: string;
   status: 'pendente' | 'enviada' | 'cancelada'; agendada_para: string; enviada_em: string | null; criado_por: string; criado_em: string;
 }
-export const MODALIDADE: Record<string, string> = { avista: 'À vista', '2x': '2x de R$ 400', tap: 'TAP · entrada + 5x' };
+export const MODALIDADE: Record<string, string> = { avista: 'À vista', '2x': '2x', tap: 'TAP · entrada + 5x' };
 export const STATUS_CONTRATO: Record<StatusContrato, { nome: string; cls: string }> = {
   aguardando_pagamento: { nome: 'Aguardando 1º pagamento', cls: 'gray' }, ativo: { nome: 'Em dia', cls: 'ok' },
   inadimplente: { nome: 'Inadimplente', cls: 'bad' }, quitado: { nome: 'Quitado', cls: 'info' },

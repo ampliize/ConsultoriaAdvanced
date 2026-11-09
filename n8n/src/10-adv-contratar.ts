@@ -11,7 +11,7 @@ const entrada = trigger({
   version: 1.1,
   config: {
     name: 'Pedido da IA',
-    parameters: { inputSource: 'workflowInputs', workflowInputs: { values: [{ name: 'conversa_id' }, { name: 'servico' }, { name: 'modalidade' }] } },
+    parameters: { inputSource: 'workflowInputs', workflowInputs: { values: [{ name: 'conversa_id' }, { name: 'servico' }, { name: 'modalidade' }, { name: 'vencimento' }] } },
     position: [0, 300]
   },
   output: [{ conversa_id: '00000000-0000-0000-0000-000000000000', servico: 'limpa_nome', modalidade: 'tap' }]
@@ -24,8 +24,8 @@ const contratar = node({
     name: 'Criar contrato',
     parameters: {
       operation: 'executeQuery',
-      query: "select public.iniciar_contratacao($1::uuid, $2, $3, 'ia') as r",
-      options: { queryReplacement: expr("{{ [ $json.conversa_id, $json.servico, $json.modalidade || '' ] }}") }
+      query: "select public.iniciar_contratacao($1::uuid, $2, $3, 'ia', case when $4 ~ '^\\d{4}-\\d{2}-\\d{2}$' then $4::date end) as r",
+      options: { queryReplacement: expr("{{ [ $json.conversa_id, $json.servico, $json.modalidade || '', $json.vencimento || '' ] }}") }
     },
     credentials: { postgres: pgCred },
     position: [240, 300]
