@@ -6,7 +6,11 @@ const rnd = (a, b) => a + Math.floor(Math.random() * (b - a + 1));
 
 function frases(paragrafo) {
   // separa por fim de frase mantendo a pontuação (não quebra "R$ 797,00" nem links)
-  const partes = (paragrafo.match(/[^.!?…]+(?:[.!?…]+(?=\s|$)|$)/g) || [paragrafo]).map(s => s.trim()).filter(Boolean);
+  // (pontuação seguida de algo que não é espaço, como em "R$1.500" ou "site.com", fica dentro da frase)
+  let partes = (paragrafo.match(/(?:[^.!?…]|[.!?…](?![\s.!?…]|$))+(?:[.!?…]+(?=\s|$)|$)/g) || []).map(s => s.trim()).filter(Boolean);
+  // trava de segurança: nenhuma parte do texto pode sumir na quebra
+  const semEspaco = t => t.replace(/\s+/g, '');
+  if (semEspaco(partes.join('')) !== semEspaco(paragrafo)) partes = [paragrafo.trim()];
   // frase ainda longa demais: quebra em ";" e depois em ", " (sem cortar no meio de número)
   const out = [];
   for (const f of partes) {
@@ -45,6 +49,10 @@ function quebrar(texto) {
     for (let i = 1; i < bolhas.length - 1; i++) if (bolhas[i].length + bolhas[i + 1].length < bolhas[melhor].length + bolhas[melhor + 1].length) melhor = i;
     bolhas.splice(melhor, 2, bolhas[melhor] + ' ' + bolhas[melhor + 1]);
   }
+  // trava de segurança: se algo do texto se perdeu, manda o parágrafo inteiro
+  // (compara só letras, números e "$": a quebra troca ";" por "." e tira vírgula do fim de propósito)
+  const essencia = t => t.replace(/[^\p{L}\p{N}$]/gu, '').toLowerCase();
+  if (essencia(bolhas.join(' ')) !== essencia(texto)) return [texto];
   return bolhas;
 }
 
