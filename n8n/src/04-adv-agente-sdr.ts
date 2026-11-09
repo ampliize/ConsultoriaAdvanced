@@ -294,14 +294,16 @@ const enviar = node({
           conversa_id: expr("{{ $('Recebe lote do lead').item.json.conversa_id }}"),
           texto: expr("{{ ($('SDR Advance').item.json.output || '').trim() }}"),
           formato: expr("{{ $('Decidir texto/áudio e registrar').item.json.formato }}"),
-          autor: 'ia'
+          autor: 'ia',
+          lote_id: expr("{{ String($('Recebe lote do lead').item.json.primeiro_id || '') }}")
         },
         matchingColumns: [],
         schema: [
           { id: 'conversa_id', displayName: 'conversa_id', required: false, defaultMatch: false, display: true, canBeUsedToMatch: true, type: 'string' },
           { id: 'texto', displayName: 'texto', required: false, defaultMatch: false, display: true, canBeUsedToMatch: true, type: 'string' },
           { id: 'formato', displayName: 'formato', required: false, defaultMatch: false, display: true, canBeUsedToMatch: true, type: 'string' },
-          { id: 'autor', displayName: 'autor', required: false, defaultMatch: false, display: true, canBeUsedToMatch: true, type: 'string' }
+          { id: 'autor', displayName: 'autor', required: false, defaultMatch: false, display: true, canBeUsedToMatch: true, type: 'string' },
+          { id: 'lote_id', displayName: 'lote_id', required: false, defaultMatch: false, display: true, canBeUsedToMatch: true, type: 'string' }
         ]
       },
       options: { waitForSubWorkflow: false }

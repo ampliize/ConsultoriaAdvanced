@@ -60,6 +60,8 @@ const out = [];
 for (const item of $input.all()) {
   const { conversa_id } = item.json;
   const autor = item.json.autor || 'ia';
+  // lote do lead que a IA está respondendo: se o lead escrever de novo, a resposta velha não sai
+  const lote_id = item.json.lote_id ? String(item.json.lote_id) : '';
   const formato = item.json.formato === 'audio' ? 'audio' : 'texto';
   let texto = String(item.json.texto || '')
     .replace(/\*\*(.+?)\*\*/g, '*$1*')
@@ -73,14 +75,14 @@ for (const item of $input.all()) {
   if (formato === 'audio') {
     const falado = texto.replace(/[*_~`]/g, '').replace(/\p{Extended_Pictographic}/gu, '').replace(/\n+/g, ' ').replace(/\s{2,}/g, ' ').trim();
     // "gravando áudio…" proporcional à fala (~15 caracteres por segundo), entre 3 e 12 s
-    out.push({ json: { conversa_id, autor, formato, bloco: texto, falado, pausa_ms: rnd(1500, 3000),
+    out.push({ json: { conversa_id, autor, formato, lote_id, bloco: texto, falado, pausa_ms: rnd(1500, 3000),
       digitando_ms: Math.min(12000, Math.max(3000, Math.round(falado.length / 15 * 1000))) } });
     continue;
   }
 
   quebrar(texto).forEach((bloco, i) => {
     out.push({ json: {
-      conversa_id, autor, formato, bloco, falado: null,
+      conversa_id, autor, formato, lote_id, bloco, falado: null,
       // antes da 1ª mensagem: tempo de "ler" a mensagem do lead; entre mensagens: respiro curto
       pausa_ms: i === 0 ? rnd(1500, 3500) : rnd(600, 1500),
       // "digitando…": ~45 ms por caractere (digitação rápida no celular), entre 1,8 e 8 s, com variação

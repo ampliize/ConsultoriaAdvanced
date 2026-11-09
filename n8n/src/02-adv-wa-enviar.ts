@@ -11,7 +11,7 @@ const entrada = trigger({
     name: 'Recebe resposta para enviar',
     parameters: {
       inputSource: 'workflowInputs',
-      workflowInputs: { values: [ { name: 'conversa_id' }, { name: 'texto' }, { name: 'formato' }, { name: 'autor' } ] }
+      workflowInputs: { values: [ { name: 'conversa_id' }, { name: 'texto' }, { name: 'formato' }, { name: 'autor' }, { name: 'lote_id' } ] }
     },
     position: [0, 300]
   },
@@ -40,9 +40,9 @@ const preparar = node({
     name: 'Checar regras e registrar envio',
     parameters: {
       operation: 'executeQuery',
-      query: 'select public.preparar_envio($1::uuid, $2, $3, $4) as v',
+      query: "select public.preparar_envio($1::uuid, $2, $3, $4, nullif($5, '')::bigint) as v",
       options: {
-        queryReplacement: expr("{{ [ $json.conversa_id, $json.formato === 'audio' ? 'audio' : 'text', $json.bloco, $json.autor ] }}")
+        queryReplacement: expr("{{ [ $json.conversa_id, $json.formato === 'audio' ? 'audio' : 'text', $json.bloco, $json.autor, String($json.lote_id || '') ] }}")
       }
     },
     credentials: { postgres: pgCred },
