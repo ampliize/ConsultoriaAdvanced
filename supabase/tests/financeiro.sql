@@ -333,4 +333,32 @@ begin
   assert (select count(*) from comissoes where cobranca_id = v_c1) = 2, 'fornecedor não é comissão';
 end $$;
 
+\echo 'F17. 2x: a 2ª parcela só vence quando o processo chega em "Restrições baixadas"'
+do $$
+declare r jsonb; v_conv uuid; v_c1 uuid; v_ct uuid;
+begin
+  perform set_config('request.jwt.claims', '{"email":"ampliize@gmail.com"}', true);
+  update config set valor = '{"valor":197,"walletId":"","servicos":["limpa_nome"]}' where chave = 'custo_produto';
+  insert into leads (telefone, nome, cpf_cnpj) values ('5579990000505', 'Duda Dois', '52998224725');
+  insert into conversas (lead_id, telefone) select id, telefone from leads where telefone = '5579990000505' returning id into v_conv;
+  r := iniciar_contratacao(v_conv, 'limpa_nome', '2x');
+  assert r->>'condicao' like '%nome estiver limpo%', 'texto 2x: ' || (r->>'condicao');
+  v_c1 := (r->>'cobranca_id')::uuid;
+  select contrato_id into v_ct from cobrancas where id = v_c1;
+  r := asaas_reservar_cobranca(v_c1);
+  perform asaas_cobranca_criada(v_c1, '{"id":"pay_d1","invoiceUrl":"https://x/d1"}');
+  perform asaas_registrar_evento('{"id":"evt_d1","event":"PAYMENT_RECEIVED","payment":{"id":"pay_d1","value":400,"netValue":398,"billingType":"PIX"}}');
+  assert (select status from contratos where id = v_ct) = 'ativo';
+  assert (select vencimento from cobrancas where contrato_id = v_ct and numero = 2) is null, '2ª sem data antes da baixa';
+  perform asaas_sincronizacao();
+  assert (select status from cobrancas where contrato_id = v_ct and numero = 2) = 'planejada', 'não gera antes';
+  r := crm_andamento_processo(v_ct, 'protocolado', null, false);
+  assert (select vencimento from cobrancas where contrato_id = v_ct and numero = 2) is null, 'protocolado não libera';
+  r := crm_andamento_processo(v_ct, 'baixa', null, false);
+  assert (r->>'parcela_final_liberada')::boolean, 'baixa libera: ' || r;
+  assert (select vencimento from cobrancas where contrato_id = v_ct and numero = 2) = hoje() + 2, 'vence em 2 dias';
+  perform asaas_sincronizacao();
+  assert (select status from cobrancas where contrato_id = v_ct and numero = 2) = 'a_gerar', 'entra na fila do Asaas';
+end $$;
+
 \echo 'OK: todos os testes do financeiro passaram'

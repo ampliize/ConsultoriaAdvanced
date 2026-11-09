@@ -215,6 +215,7 @@ function Detalhe({ ctx, ct, etapas, fechar }: { ctx: Ctx; ct: Contrato; etapas: 
               <input className="input" value={detalhe} onChange={e => setDetalhe(e.target.value)} placeholder="Ex.: Número do processo: 0001234-56.2026.8.25.0001." /></div>
             <label className="small b" style={{ display: 'flex', gap: 6, alignItems: 'center', marginTop: 10 }}><input type="checkbox" checked={enviar} onChange={e => setEnviar(e.target.checked)} /> Avisar o cliente no WhatsApp</label>
             {enviar && <div className="msg out" style={{ marginTop: 8, maxWidth: '100%', whiteSpace: 'pre-wrap' }}>{preview}</div>}
+            {ct.modalidade === '2x' && (etapa === 'baixa' || etapa === 'concluido') && cobs.some(c => c.status === 'planejada') && <div className="aviso warn">Ao salvar, a 2ª parcela de R$ 400 é gerada no Asaas (vence em 2 dias) e o cliente recebe o link.</div>}
             <div className="row end" style={{ marginTop: 10 }}><button className="btn primary" disabled={ocupado} onClick={() => acao(() => ctx.api.andamento(ct.id, etapa, detalhe, enviar), enviar ? 'Andamento salvo · mensagem vai em até 1 minuto' : 'Andamento salvo')}>Salvar andamento</button></div>
           </div>
         )}
@@ -284,7 +285,7 @@ function LinhaCobranca({ ctx, c, todas, modalidade }: { ctx: Ctx; c: Cobranca; t
     <tr style={{ opacity: c.status === 'cancelada' || c.status === 'a_cancelar' ? 0.55 : 1 }}>
       <td className="b">{rotuloCobranca(c, todas, modalidade)}</td>
       <td>{brl(c.valor)}{c.valor_estornado ? <div className="small" style={{ color: 'var(--bad)' }}>estornado {brl(c.valor_estornado)}</div> : null}</td>
-      <td>{dia(c.vencimento)}</td>
+      <td>{c.vencimento ? dia(c.vencimento) : modalidade === '2x' && c.numero > 1 ? <span className="small muted">quando o nome estiver limpo</span> : '—'}</td>
       <td><span className={'pill ' + st.cls}>{st.nome}</span>{c.erro && c.status === 'a_gerar' ? <div className="small" style={{ color: 'var(--bad)' }} title={c.erro}>falha ao gerar, tentando de novo</div> : null}</td>
       <td className="small">{c.pago_em ? <>{dia(c.pago_em)} · {c.forma_paga === 'PIX' ? 'PIX' : c.forma_paga === 'BOLETO' ? 'boleto' : c.forma_paga || ''}</> : '—'}</td>
       <td style={{ whiteSpace: 'nowrap' }}>
