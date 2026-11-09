@@ -88,7 +88,7 @@ const pagamento = tool({
   config: {
     name: 'gerar_link_pagamento',
     parameters: {
-      description: 'Gera o link de pagamento oficial (boleto com PIX, sem cartão) e a condição do serviço escolhido, e move o lead para PROPOSTA. Chame quando o lead aceitar contratar. modalidade: avista, 2x ou tap (2x = 2x de R$ 400 e tap = entrada R$ 297 + 5x R$ 150, só no limpa_nome; diagnóstico é sempre avista). Precisa do nome completo e do CPF/CNPJ já salvos. Envie o link exatamente como veio. Se ok=false, siga a orientacao e NUNCA invente link.',
+      description: 'Gera o link de pagamento oficial (boleto com PIX, sem cartão) e a condição do serviço escolhido, e move o lead para PROPOSTA. Chame quando o lead aceitar contratar. modalidade: avista, 2x ou tap (avista = R$ 597; 2x = R$ 400 agora e R$ 400 quando o nome estiver limpo; tap = entrada R$ 297 + 5x R$ 150; só no limpa_nome; diagnóstico é sempre avista). Precisa do nome completo e do CPF/CNPJ já salvos. Envie o link exatamente como veio. Se ok=false, siga a orientacao e NUNCA invente link.',
       source: 'database',
       workflowId: { __rl: true, mode: 'id', value: '5i8G5K4B4k7LyuBB', cachedResultName: 'ADV · Contratar' },
       workflowInputs: {
