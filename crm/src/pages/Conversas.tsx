@@ -15,6 +15,7 @@ export function statusConversa(c: Conversa, pausado: boolean, agora: number) {
     const min = Math.max(1, Math.round((new Date(c.ia_retorna_em).getTime() - Date.now()) / 60000));
     return { cls: 'warn', txt: `Humano atendendo · IA volta em ${min} min` };
   }
+  if (c.ia_ativa === false) return { cls: 'warn', txt: 'Com a equipe' };
   return { cls: 'ok', txt: 'IA ativa' };
 }
 
@@ -33,7 +34,7 @@ export default function Conversas({ ctx, selecionada, selecionar }: { ctx: Ctx; 
   const lista = useMemo(() => ctx.snap.conversas.filter(c => {
     const s = statusConversa(c, false, ctx.agora);
     if (filtro === 'ia' && s.txt !== 'IA ativa') return false;
-    if (filtro === 'humano' && !(c.assumida_manual || s.txt.startsWith('Humano'))) return false;
+    if (filtro === 'humano' && !(c.assumida_manual || s.txt.startsWith('Humano') || s.txt === 'Com a equipe')) return false;
     if (filtro === 'aguardando' && !c.aguardando_humano) return false;
     const q = busca.toLowerCase();
     return !q || (c.nome || '').toLowerCase().includes(q) || (c.nome_whatsapp || '').toLowerCase().includes(q) || c.telefone.includes(q.replace(/\D/g, '') || '§');
@@ -118,7 +119,7 @@ export default function Conversas({ ctx, selecionada, selecionar }: { ctx: Ctx; 
             <button className="btn primary" disabled={enviando || !texto.trim()} onClick={enviar} title="Enviar"><SendHorizontal size={16} /> <span>{enviando ? 'Enviando…' : 'Enviar'}</span></button>
           </div>
           <div className="small muted" style={{ padding: '0 16px 10px', background: 'var(--card)' }}>
-            {conv.assumida_manual ? 'Conversa assumida: a IA só volta quando você clicar em “Devolver para a IA”.' : `Ao responder (aqui ou pelo celular), a IA pausa nesta conversa e volta sozinha ${ctx.snap.config.minutos_retorno_humano?.valor ?? 15} min depois da sua última mensagem. Para ela não voltar, use “Assumir atendimento”.`}
+            {conv.assumida_manual || !ctx.snap.config.ia_retorno_automatico?.valor ? 'Ao responder (aqui ou pelo celular), a IA para nesta conversa e só volta quando você clicar em “Devolver para a IA”.' : `Ao responder (aqui ou pelo celular), a IA pausa nesta conversa e volta sozinha ${ctx.snap.config.minutos_retorno_humano?.valor ?? 15} min depois da sua última mensagem. Para ela não voltar, use “Assumir atendimento”.`}
           </div>
         </> : <div className="empty">Selecione uma conversa.</div>}
       </div>

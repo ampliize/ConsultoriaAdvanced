@@ -34,7 +34,8 @@ function frases(paragrafo) {
 function quebrar(texto) {
   const bolhas = [];
   for (const par of texto.split(/\n\s*\n/).map(p => p.trim()).filter(Boolean)) {
-    if (par.length <= MAX_BOLHA) { bolhas.push(par); continue; }
+    // bloco com várias linhas (ex.: texto oficial de valores) vai inteiro, como uma mensagem só
+    if (par.length <= MAX_BOLHA || par.includes('\n')) { bolhas.push(par); continue; }
     let atual = '';
     for (const f of frases(par)) {
       if (!atual) { atual = f; continue; }
@@ -66,7 +67,7 @@ for (const item of $input.all()) {
   let texto = String(item.json.texto || '')
     .replace(/\*\*(.+?)\*\*/g, '*$1*')
     .replace(/^#+\s*/gm, '')
-    .replace(/^\s*[-•]\s+/gm, '')
+    .replace(/^\s*[-•]\s+/gm, '• ')
     .replace(/[ \t]*[—–][ \t]*/g, ', ')
     .replace(/,\s*,/g, ',')
     .trim();

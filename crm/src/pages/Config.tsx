@@ -67,6 +67,8 @@ function IaConfig({ ctx }: { ctx: Ctx }) {
   const cfg = ctx.snap.config;
   const [min, setMin] = useState<number>(Number(cfg.minutos_retorno_humano?.valor ?? 15));
   const [equipe, setEquipe] = useState<string>(Array.isArray(cfg.whatsapp_equipe?.valor) ? cfg.whatsapp_equipe.valor.join('\n') : '');
+  const [voltaSozinha, setVoltaSozinha] = useState<boolean>(cfg.ia_retorno_automatico?.valor === true);
+  const [base, setBase] = useState<string>(Array.isArray(cfg.clientes_base?.valor) ? cfg.clientes_base.valor.join('\n') : '');
   const [exigir, setExigir] = useState<boolean>(cfg.exigir_pagamento_para_agendar?.valor !== false);
   const [audio, setAudio] = useState<string>(cfg.audio_modo?.valor || 'espelhar');
   const [voz, setVoz] = useState<string>(cfg.elevenlabs_voice_id?.valor || '');
@@ -75,6 +77,8 @@ function IaConfig({ ctx }: { ctx: Ctx }) {
     if (!(min >= 1)) return setErro('Os minutos precisam ser 1 ou mais.');
     try {
       await ctx.api.salvarConfig('minutos_retorno_humano', Number(min));
+      await ctx.api.salvarConfig('ia_retorno_automatico', voltaSozinha);
+      await ctx.api.salvarConfig('clientes_base', base.split('\n').map(s => s.replace(/\D/g, '')).filter(s => s.length >= 10).map(s => (s.length <= 11 ? '55' + s : s)));
       await ctx.api.salvarConfig('whatsapp_equipe', equipe.split('\n').map(s => s.replace(/\D/g, '')).filter(Boolean).map(s => (s.length <= 11 ? '55' + s : s)));
       await ctx.api.salvarConfig('exigir_pagamento_para_agendar', exigir);
       await ctx.api.salvarConfig('audio_modo', audio);
@@ -83,13 +87,18 @@ function IaConfig({ ctx }: { ctx: Ctx }) {
     } catch (e: any) { setErro(e.message); }
   };
   return <>
-    <Caixa titulo="Quando um humano assume" desc="Se alguém da equipe responder pelo número, a IA para naquela conversa.">
+    <Caixa titulo="Quando um humano assume" desc="Se alguém da equipe responder (pelo celular ou pelo CRM), a IA para naquela conversa."
+      extra={<label className="switch"><input type="checkbox" checked={voltaSozinha} onChange={e => setVoltaSozinha(e.target.checked)} /><span>{voltaSozinha ? 'IA volta sozinha' : 'Só volta com “Devolver para a IA”'}</span></label>}>
       <div className="cfg-grid">
-        <div className="field"><label>A IA volta depois de (minutos) <Dica t="Tempo sem mensagem do humano para a IA retomar a conversa." /></label>
-          <input className="input" type="number" min={1} value={min} onChange={e => setMin(Number(e.target.value))} /></div>
+        {voltaSozinha && <div className="field"><label>A IA volta depois de (minutos) <Dica t="Tempo sem mensagem do humano para a IA retomar a conversa." /></label>
+          <input className="input" type="number" min={1} value={min} onChange={e => setMin(Number(e.target.value))} /></div>}
         <div className="field"><label>Reunião do Diagnóstico</label>
           <select className="input" value={String(exigir)} onChange={e => setExigir(e.target.value === 'true')}><option value="true">Só agendar depois do pagamento</option><option value="false">Pode agendar antes</option></select></div>
       </div>
+    </Caixa>
+    <Caixa titulo="Clientes da base" desc="A Ava só atende clientes novos. Mensagens destes números (e de quem pagou um contrato há mais de 3 dias) vão direto para a equipe, com alerta.">
+      <div className="field"><label>Telefones de clientes antigos (um por linha, com DDD)</label>
+        <textarea className="input" rows={4} value={base} onChange={e => setBase(e.target.value)} placeholder="79 99999-9999" /></div>
     </Caixa>
     <Caixa titulo="Equipe" desc="Recebem os alertas (IA parou, pagamento, reunião, erro). A IA nunca responde estes números como se fossem leads.">
       <div className="field"><label>WhatsApp da equipe (um por linha, com DDD)</label>
