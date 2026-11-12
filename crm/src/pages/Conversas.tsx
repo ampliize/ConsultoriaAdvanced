@@ -1,10 +1,11 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Hand, Bot, Search, Mic, Image as Img, FileText, SendHorizontal, ArrowLeft } from 'lucide-react';
+import { Hand, Bot, Search, Mic, Image as Img, FileText, SendHorizontal, ArrowLeft, Receipt } from 'lucide-react';
 import type { Ctx } from '../App';
 import type { Conversa, Mensagem } from '../lib/types';
 import { etapaInfo } from '../lib/types';
 import { hora, relativo, nomeLead, dataHora } from '../lib/format';
 import LeadPanel from '../components/LeadPanel';
+import GerarCobranca from '../components/GerarCobranca';
 
 export function statusConversa(c: Conversa, pausado: boolean, agora: number) {
   if (pausado) return { cls: 'bad', txt: 'Pausa geral' };
@@ -26,6 +27,7 @@ export default function Conversas({ ctx, selecionada, selecionar }: { ctx: Ctx; 
   const caixa = useRef<HTMLDivElement>(null);
   const [texto, setTexto] = useState('');
   const [enviando, setEnviando] = useState(false);
+  const [cobrar, setCobrar] = useState(false);
   const [aberta, setAberta] = useState(!!selecionada); // celular: lista ou conversa em tela cheia
   const pausado = !!ctx.snap.config.sdr_pausado_global?.valor?.pausado;
   const lista = useMemo(() => ctx.snap.conversas.filter(c => {
@@ -92,6 +94,7 @@ export default function Conversas({ ctx, selecionada, selecionar }: { ctx: Ctx; 
             <button className="btn icone voltar" onClick={() => setAberta(false)} aria-label="Voltar para a lista"><ArrowLeft size={18} /></button>
             <div style={{ minWidth: 0 }}><div className="b">{nomeLead(conv)}</div><div className="small muted">{conv.motivo_handoff && conv.aguardando_humano ? `Transferida pela IA: ${conv.motivo_handoff}` : `Conversa iniciada em ${dataHora(conv.criado_em)}`}</div></div>
             <span className={'pill ' + st!.cls} style={{ marginLeft: 'auto' }}><span className="dot" /> {st!.txt}</span>
+            {lead && <button className="btn cobrar" onClick={() => setCobrar(true)} title="Gerar cobrança pelo Asaas"><Receipt size={16} /> <span>Gerar cobrança</span></button>}
             {conv.assumida_manual || conv.aguardando_humano || !conv.ia_ativa
               ? <button className="btn ok" onClick={devolver}><Bot size={16} /> Devolver para a IA</button>
               : <button className="btn gold" onClick={assumir}><Hand size={16} /> Assumir atendimento</button>}
@@ -120,6 +123,7 @@ export default function Conversas({ ctx, selecionada, selecionar }: { ctx: Ctx; 
         </> : <div className="empty">Selecione uma conversa.</div>}
       </div>
       <div className="side-panel">{lead ? <LeadPanel ctx={ctx} lead={lead} /> : <div className="empty">—</div>}</div>
+      {cobrar && lead && <GerarCobranca ctx={ctx} lead={lead} fechar={() => setCobrar(false)} />}
     </div>
   );
 }

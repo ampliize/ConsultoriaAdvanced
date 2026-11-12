@@ -169,6 +169,7 @@ td { padding: 10px; border-bottom: 1px solid var(--line); vertical-align: middle
   .thead .small { display: none; }
   .thead .pill { display: none; }
   .thead .btn.ok, .thead .btn.gold { margin-left: auto; padding: 7px 10px; font-size: 12px; white-space: nowrap; }
+  .thead .btn.cobrar { padding: 7px 9px; } .thead .btn.cobrar span { display: none; }
   .msgs { padding: 12px 10px; } .msg { max-width: 86%; }
   .composer { padding: 8px 10px; } .composer .btn { padding: 10px; } .composer .btn span { display: none; }
   .composer + .small { display: none; }
@@ -236,3 +237,10 @@ td { padding: 10px; border-bottom: 1px solid var(--line); vertical-align: middle
   .tabela-cfg.users .tr { grid-template-columns: 1fr auto; }
   .tabela-cfg.users .tr > :nth-child(2) { grid-row: auto; }
 }
+
+/* gerar cobrança */
+.cfg-sub { font-size: 12px; font-weight: 750; text-transform: uppercase; letter-spacing: .04em; color: var(--muted); margin: 6px 0 8px; }
+.prod-tabela { display: grid; gap: 8px; }
+.prod-tabela .tr { display: grid; grid-template-columns: 1.4fr 1fr 1fr; gap: 10px; align-items: center; }
+.prod-tabela .th { display: grid; grid-template-columns: 1.4fr 1fr 1fr; gap: 10px; font-size: 12px; color: var(--muted); font-weight: 700; }
+@media (max-width: 760px) { .prod-tabela .th { display: none; } .prod-tabela .tr { grid-template-columns: 1fr 1fr; } .prod-tabela .tr > :first-child { grid-column: 1 / -1; } }

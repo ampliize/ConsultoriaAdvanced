@@ -11,7 +11,7 @@ type Aba = 'whatsapp' | 'pagamentos' | 'split' | 'avisos' | 'processo' | 'agenda
 const ABAS: { id: Aba; nome: string; desc: string; icon: any }[] = [
   { id: 'whatsapp', nome: 'WhatsApp', desc: 'Número conectado ao atendimento da IA.', icon: Smartphone },
   { id: 'pagamentos', nome: 'Pagamentos', desc: 'Cobrança pelo Asaas, custo do produto e webhook.', icon: Wallet },
-  { id: 'split', nome: 'Split e comissões', desc: 'Quem recebe a comissão de cada pagamento do Limpa Nome.', icon: HandCoins },
+  { id: 'split', nome: 'Split e comissões', desc: 'Comissão, custo de cada produto e exemplos de repasse.', icon: HandCoins },
   { id: 'avisos', nome: 'Avisos aos clientes', desc: 'Lembretes de parcela e avisos de atraso no WhatsApp.', icon: BellRing },
   { id: 'processo', nome: 'Andamento do processo', desc: 'Etapas do Limpa Nome e a mensagem de cada uma.', icon: Scale },
   { id: 'agenda', nome: 'Agenda do especialista', desc: 'Horários que a IA pode oferecer para a reunião no Meet.', icon: CalendarDays },

@@ -9,6 +9,7 @@ const EVENTOS = ['PAYMENT_CONFIRMED', 'PAYMENT_RECEIVED', 'PAYMENT_OVERDUE', 'PA
 const TEXTOS: { k: string; nome: string }[] = [
   { k: 'lembrete', nome: 'Lembrete antes do vencimento' }, { k: 'lembrete_hoje', nome: 'Lembrete no dia do vencimento' },
   { k: 'vencida', nome: 'Parcela vencida' }, { k: 'link', nome: 'Envio do link de pagamento' }, { k: 'quitacao', nome: 'Link de quitação' },
+  { k: 'primeira_hoje', nome: '1º pagamento vence hoje (lead ainda não pagou)' }, { k: 'primeira_vencida', nome: '1º pagamento venceu (lead ainda não pagou)' },
 ];
 const dias = (v: any) => (Array.isArray(v) ? v.join(', ') : '');
 const lerDias = (s: string) => Array.from(new Set(s.split(/[,\s;]+/).map(x => parseInt(x, 10)).filter(x => Number.isFinite(x) && x >= 0 && x <= 60))).sort((a, b) => b - a);
@@ -48,7 +49,7 @@ export function PagamentosConfig({ ctx }: { ctx: Ctx }) {
   const [ativo, setAtivo] = useState<boolean>(cfg.asaas_ativo?.valor === true);
   const [base, setBase] = useState<string>(cfg.asaas_base_url?.valor || 'https://api-sandbox.asaas.com/v3');
   const [forma, setForma] = useState<string>(cfg.asaas_forma_cobranca?.valor || 'BOLETO');
-  const [custo, setCusto] = useState<{ valor: number; walletId: string; servicos: string[] }>(cfg.custo_produto?.valor || { valor: 197, walletId: '', servicos: ['limpa_nome'] });
+  const [custo, setCusto] = useState<{ walletId: string }>({ walletId: cfg.custo_produto?.valor?.walletId || '' });
   const [links, setLinks] = useState<Record<string, string>>({
     link_pagamento_diagnostico: cfg.link_pagamento_diagnostico?.valor || '', link_pagamento_limpa_nome_avista: cfg.link_pagamento_limpa_nome_avista?.valor || '',
     link_pagamento_limpa_nome_2x: cfg.link_pagamento_limpa_nome_2x?.valor || '', link_pagamento_limpa_nome_tap: cfg.link_pagamento_limpa_nome_tap?.valor || '',
@@ -73,9 +74,8 @@ export function PagamentosConfig({ ctx }: { ctx: Ctx }) {
       {!producao && ativo && <div className="aviso warn">Ambiente de teste: nenhuma cobrança é real.</div>}
     </Caixa>
 
-    <Caixa titulo="Custo do produto" desc="Sai inteiro do 1º pagamento de cada contrato do Limpa Nome, antes da comissão.">
+    <Caixa titulo="Custo do produto" desc="O valor de custo de cada produto fica na aba Split e comissões. Aqui você diz para onde ele vai.">
       <div className="cfg-grid">
-        <div className="field"><label>Valor por contrato (R$)</label><input className="input" type="number" min={0} step="0.01" value={custo.valor} onChange={e => setCusto({ ...custo, valor: Number(e.target.value) })} /></div>
         <div className="field"><label>Carteira do fornecedor <Dica t="Deixe vazio para o custo ficar na conta Asaas que faz a cobrança." /></label>
           <input className="input mono" placeholder="vazio = fica na conta que cobra" value={custo.walletId} onChange={e => setCusto({ ...custo, walletId: e.target.value })} /></div>
       </div>
@@ -100,22 +100,43 @@ export function PagamentosConfig({ ctx }: { ctx: Ctx }) {
     <Rodape erro={erro} ocupado={ocupado} onClick={() => salvar(
       () => ativo && benef.some(b => !String(b.walletId || '').trim()) ? 'Para ligar o Asaas, preencha a carteira (walletId) de todos na aba Split e comissões.' : null,
       [['asaas_base_url', base], ['asaas_forma_cobranca', forma],
-       ['custo_produto', { ...custo, valor: Number(custo.valor) || 0, walletId: (custo.walletId || '').trim() }],
+       ['custo_produto', { ...(cfg.custo_produto?.valor || {}), walletId: (custo.walletId || '').trim() }],
        ...Object.entries(links).map(([k, v]) => [k, v.trim()] as [string, any]), ['asaas_ativo', ativo]])} />
   </>;
 }
 
 // ---------------------------------------------------------------- Split
+const PRODUTOS_SPLIT = [
+  { id: 'limpa_nome', nome: 'Limpa Nome', planos: 'planos_limpa_nome' },
+  { id: 'combo', nome: 'Limpa Nome + Rating (Combo)', planos: 'planos_combo' },
+  { id: 'rating', nome: 'Rating sozinho', planos: 'planos_rating' },
+] as const;
+const MODS: Record<string, string> = { avista: 'À vista', '2x': '2x', tap: 'TAP' };
+
 export function SplitConfig({ ctx }: { ctx: Ctx }) {
   const cfg = ctx.snap.config;
   const [benef, setBenef] = useState<{ nome: string; walletId: string; percentual: number }[]>(Array.isArray(cfg.split_beneficiarios?.valor) ? cfg.split_beneficiarios.valor : []);
+  const custoCfg = cfg.custo_produto?.valor || {};
+  const comSplitCfg: string[] = Array.isArray(cfg.split_servicos?.valor) ? cfg.split_servicos.valor : ['limpa_nome'];
+  const [prod, setProd] = useState(PRODUTOS_SPLIT.map(p => ({
+    id: p.id,
+    custo: Number(custoCfg.por_servico?.[p.id] ?? (p.id === 'limpa_nome' ? custoCfg.valor ?? 197 : 0)),
+    comCusto: Array.isArray(custoCfg.servicos) ? custoCfg.servicos.includes(p.id) : p.id === 'limpa_nome',
+    comissao: comSplitCfg.includes(p.id),
+  })));
+  const [aberto, setAberto] = useState<string>('limpa_nome');
   const { erro, ocupado, salvar } = useSalvar(ctx, 'Split salvo');
   const total = benef.reduce((a, b) => a + (Number(b.percentual) || 0), 0);
-  const custo = Number(cfg.custo_produto?.valor?.valor ?? 0);
-  const exemplo = (v: number) => Math.round((v - Math.min(v, custo)) * total) / 100;
+  const upd = (id: string, patch: any) => setProd(prod.map(x => x.id === id ? { ...x, ...patch } : x));
+
+  // simula como o sistema reparte: o custo sai primeiro (até acabar), a comissão é sobre o que sobra
+  const simular = (parcelas: number[], custo: number, comissao: boolean) => {
+    let resto = custo;
+    return parcelas.map(v => { const c = Math.min(resto, v); resto -= c; const com = comissao ? Math.round((v - c) * total) / 100 : 0; return { v, c, com, liq: Math.round((v - c - com) * 100) / 100 }; });
+  };
 
   return <>
-    <Caixa titulo="Quem recebe a comissão" desc="Percentual de cada pagamento do Limpa Nome, depois do custo do produto."
+    <Caixa titulo="Quem recebe a comissão" desc="Percentual de cada pagamento, depois do custo do produto. Vale para todos os produtos com comissão ligada abaixo."
       extra={<span className="pill info">Total {total.toLocaleString('pt-BR')}%</span>}>
       <div className="tabela-cfg">
         <div className="th"><span>Nome</span><span>Carteira Asaas (walletId)</span><span>%</span><span /></div>
@@ -131,20 +152,52 @@ export function SplitConfig({ ctx }: { ctx: Ctx }) {
       <button type="button" className="btn sm" style={{ marginTop: 10 }} onClick={() => setBenef([...benef, { nome: '', walletId: '', percentual: 12.5 }])}><Plus size={14} /> Adicionar</button>
     </Caixa>
 
-    <Caixa titulo="Como fica na prática" desc={`Com custo de R$ ${custo.toLocaleString('pt-BR')} e ${total.toLocaleString('pt-BR')}% de comissão:`}>
-      <div className="exemplos">
-        <div><b>TAP</b><span>entrada R$ 297 → {brl(exemplo(297))}</span><span>cada parcela R$ 150 → {brl(Math.round(150 * total) / 100)}</span></div>
-        <div><b>À vista</b><span>R$ 597 → {brl(exemplo(597))}</span></div>
-        <div><b>2x</b><span>1ª R$ 400 → {brl(exemplo(400))}</span><span>2ª R$ 400 → {brl(Math.round(400 * total) / 100)}</span></div>
+    <Caixa titulo="Produtos" desc="Custo de cada contrato (sai do 1º pagamento antes da comissão) e se o produto paga comissão. O Diagnóstico não tem custo nem comissão.">
+      <div className="prod-tabela">
+        <div className="th"><span>Produto</span><span>Custo por contrato (R$)</span><span>Liga / desliga</span></div>
+        {PRODUTOS_SPLIT.map(p => { const x = prod.find(y => y.id === p.id)!; return (
+          <div className="tr" key={p.id}>
+            <b>{p.nome}</b>
+            <input className="input" type="number" min={0} step="0.01" value={x.comCusto ? x.custo : 0} disabled={!x.comCusto}
+              onChange={e => upd(p.id, { custo: Number(e.target.value) })} />
+            <div className="row" style={{ gap: 14, flexWrap: 'wrap' }}>
+              <label className="switch"><input type="checkbox" checked={x.comCusto} onChange={e => upd(p.id, { comCusto: e.target.checked })} /><span>Custo</span></label>
+              <label className="switch"><input type="checkbox" checked={x.comissao} onChange={e => upd(p.id, { comissao: e.target.checked })} /><span>Comissão</span></label>
+            </div>
+          </div>); })}
       </div>
+      <p className="small muted" style={{ marginTop: 10 }}>Mudanças valem para contratos novos. Contratos que já existem mantêm o custo e a comissão com que foram criados. Na cobrança personalizada você escolhe custo e comissão na hora.</p>
+    </Caixa>
+
+    <Caixa titulo="Como fica na prática" desc={`Com ${total.toLocaleString('pt-BR')}% de comissão. Escolha o produto:`}
+      extra={<div className="seg">{PRODUTOS_SPLIT.map(p => <button key={p.id} className={aberto === p.id ? 'on' : ''} onClick={() => setAberto(p.id)}>{p.nome.split(' (')[0]}</button>)}</div>}>
+      {(() => {
+        const p = PRODUTOS_SPLIT.find(y => y.id === aberto)!; const x = prod.find(y => y.id === aberto)!;
+        const planos: Record<string, { parcelas: number[] }> = cfg[p.planos]?.valor || {};
+        return <div className="exemplos">{Object.entries(planos).map(([m, pl]) => {
+          const linhas = simular(pl.parcelas || [], x.comCusto ? x.custo : 0, x.comissao);
+          const soma = (k: 'v' | 'c' | 'com' | 'liq') => linhas.reduce((a, l) => a + l[k], 0);
+          return <div key={m}><b>{MODS[m] || m} · {brl(soma('v'))}</b>
+            {linhas.slice(0, 3).map((l, i) => <span key={i}>{i === 0 ? '1º' : `${i + 1}º`} {brl(l.v)} → custo {brl(l.c)} · comissão {brl(l.com)}</span>)}
+            {linhas.length > 3 && <span>… mais {linhas.length - 3} de {brl(linhas[3].v)}</span>}
+            <span>Comissão total {brl(soma('com'))} · fica com a Advance {brl(soma('liq'))}</span></div>;
+        })}</div>;
+      })()}
     </Caixa>
 
     <Rodape erro={erro} ocupado={ocupado} onClick={() => salvar(() => {
       if (benef.some(b => !b.nome.trim() || !(Number(b.percentual) > 0))) return 'Cada pessoa precisa de nome e percentual.';
       if (total > 50) return 'A soma passou de 50%. Confira os percentuais.';
+      if (prod.some(x => x.comCusto && !(x.custo >= 0))) return 'Custo inválido.';
       if (cfg.asaas_ativo?.valor === true && benef.some(b => !b.walletId.trim())) return 'Com o Asaas ligado, todos precisam ter a carteira (walletId).';
       return null;
-    }, [['split_beneficiarios', benef.map(b => ({ nome: b.nome.trim(), walletId: b.walletId.trim(), percentual: Number(b.percentual) }))]])} />
+    }, [
+      ['split_beneficiarios', benef.map(b => ({ nome: b.nome.trim(), walletId: b.walletId.trim(), percentual: Number(b.percentual) }))],
+      ['split_servicos', prod.filter(x => x.comissao).map(x => x.id)],
+      ['custo_produto', { ...custoCfg, valor: prod.find(x => x.id === 'limpa_nome')!.custo,
+        servicos: prod.filter(x => x.comCusto).map(x => x.id),
+        por_servico: Object.fromEntries(prod.map(x => [x.id, Math.round(x.custo * 100) / 100])) }],
+    ])} />
   </>;
 }
 const brl = (v: number) => v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
@@ -156,6 +209,7 @@ export function AvisosConfig({ ctx }: { ctx: Ctx }) {
   const [venc, setVenc] = useState(dias(cfg.notif_vencida_dias?.valor ?? [1, 5]));
   const [jan, setJan] = useState<{ inicio: string; fim: string }>(cfg.notif_janela?.valor || { inicio: '08:00', fim: '20:00' });
   const [textos, setTextos] = useState<Record<string, string>>(cfg.notif_textos?.valor || {});
+  const [primeira, setPrimeira] = useState<boolean>(cfg.notif_primeira_cobranca?.valor === true);
   const { erro, ocupado, salvar } = useSalvar(ctx, 'Avisos salvos');
 
   return <>
@@ -165,6 +219,11 @@ export function AvisosConfig({ ctx }: { ctx: Ctx }) {
         <div className="field"><label>Atraso: dias depois <Dica t="Separe por vírgula. Ex.: 1, 5" /></label><input className="input" value={venc} onChange={e => setVenc(e.target.value)} placeholder="1, 5" /></div>
         <div className="field"><label>Horário permitido</label><div className="row"><input className="input" type="time" value={jan.inicio} onChange={e => setJan({ ...jan, inicio: e.target.value })} /><span className="small">até</span><input className="input" type="time" value={jan.fim} onChange={e => setJan({ ...jan, fim: e.target.value })} /></div></div>
       </div>
+    </Caixa>
+
+    <Caixa titulo="Lead que recebeu o link e não pagou" desc="Avisa no dia do vencimento e nos dias de atraso acima, até o lead pagar. Desligado, só os clientes que já pagaram o 1º recebem avisos."
+      extra={<label className="switch"><input type="checkbox" checked={primeira} onChange={e => setPrimeira(e.target.checked)} /><span>{primeira ? 'Ligado' : 'Desligado'}</span></label>}>
+      <span />
     </Caixa>
 
     <Caixa titulo="Textos das mensagens" desc="Palavras entre chaves são trocadas automaticamente."
@@ -177,7 +236,7 @@ export function AvisosConfig({ ctx }: { ctx: Ctx }) {
 
     <Rodape erro={erro} ocupado={ocupado} onClick={() => salvar(
       () => jan.inicio >= jan.fim ? 'O horário final precisa ser depois do inicial.' : null,
-      [['notif_lembrete_dias', lerDias(lemb)], ['notif_vencida_dias', lerDias(venc)], ['notif_janela', jan], ['notif_textos', textos]])} />
+      [['notif_lembrete_dias', lerDias(lemb)], ['notif_vencida_dias', lerDias(venc)], ['notif_janela', jan], ['notif_textos', textos], ['notif_primeira_cobranca', primeira]])} />
   </>;
 }
 

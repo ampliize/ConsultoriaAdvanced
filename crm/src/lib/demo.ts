@@ -127,7 +127,10 @@ function gerar(): Snapshot {
     cfg('notif_vencida_dias', [1, 5], 'Aviso depois do vencimento'),
     cfg('notif_textos', NOTIF_TEXTOS, 'Textos das notificações'),
     cfg('processo_etapas', PROCESSO_ETAPAS, 'Etapas do processo'),
-    cfg('custo_produto', { valor: 197, walletId: '', servicos: ['limpa_nome'] }, 'Custo fixo por contrato'),
+    cfg('custo_produto', { valor: 197, walletId: '', servicos: ['limpa_nome', 'combo', 'rating'], por_servico: { limpa_nome: 197, combo: 197, rating: 150 } }, 'Custo fixo por contrato'),
+    cfg('split_servicos', ['limpa_nome', 'combo', 'rating'], 'Produtos com comissão'),
+    cfg('planos_combo', { avista: { nome: 'À vista', parcelas: [1500] }, '2x': { nome: '2x de R$ 900', parcelas: [900, 900] }, tap: { nome: 'TAP', parcelas: [597, 297, 297, 297, 297, 297] } }, 'Combo'),
+    cfg('planos_rating', { avista: { nome: 'À vista', parcelas: [997] }, '2x': { nome: '2x de R$ 600', parcelas: [600, 600] } }, 'Rating'),
   ].map(r => [r.chave, r]));
   const fin = financeiro(leads, agora);
   return { leads, conversas, reunioes, eventos, alertas, config, mensagens, ...fin };
@@ -301,6 +304,20 @@ export function apiDemo(): Api {
       db.notificacoes.unshift({ id: Date.now(), lead_id: c.lead_id, contrato_id: c.contrato_id, cobranca_id: id, tipo: 'manual', texto: 'Link de pagamento: ' + c.invoice_url, status: 'pendente', agendada_para: new Date().toISOString(), enviada_em: null, criado_por: 'demo@advance', criado_em: new Date().toISOString() });
       avisar('notificacoes'); return { ok: true };
     },
+    async gerarCobranca(leadId, d) {
+      const l = db.leads.find(x => x.id === leadId)!;
+      if (d.nome) l.nome = d.nome; if (d.cpf_cnpj) l.cpf_cnpj = String(d.cpf_cnpj).replace(/\D/g, ''); if (d.email) l.email = d.email;
+      if (!l.nome || !l.cpf_cnpj) return { ok: false, erro: 'Preencha o nome completo e o CPF ou CNPJ do cliente.' };
+      if (d.tipo === 'produto') return this.criarContrato(leadId, d.servico, d.modalidade);
+      const v = Number(d.valor) || 0; if (v < 5) return { ok: false, erro: 'O valor mínimo é R$ 5,00.' };
+      const n = Number(d.parcelas) || 0, vp = Number(d.valor_parcela) || 0; const id = uid(); const total = v + n * vp;
+      db.contratos.unshift({ id, lead_id: leadId, servico: 'personalizada' as any, modalidade: 'personalizada' as any, descricao: d.descricao, valor_total: total, status: 'aguardando_pagamento', processo_etapa: null, processo_detalhe: null, processo_atualizado_em: null, aderido_em: null, quitado_em: null, desconto_quitacao: null, criado_por: 'demo@advance', criado_em: new Date().toISOString(), nome: l.nome, nome_whatsapp: l.nome_whatsapp, telefone: l.telefone, cpf_cnpj: l.cpf_cnpj, email: l.email, pago: 0, saldo_devedor: total, vencido: 0, pagamentos_feitos: 0, pagamentos_total: n + 1, custo_produto: Number(d.custo) || 0, custo_recuperado: 0 } as any);
+      const cid = uid();
+      db.cobrancas.push({ id: cid, contrato_id: id, lead_id: leadId, numero: 1, tipo: n ? 'adesao' : 'avista', valor: v, vencimento: d.vencimento || isoDia(Date.now() + 2 * DIA), status: 'pendente', motivo_cancelamento: null, asaas_payment_id: 'pay_demo', invoice_url: 'https://www.asaas.com/i/demo' + cid.slice(0, 6), forma_paga: null, valor_pago: null, valor_liquido: null, valor_estornado: null, pago_em: null, erro: null, criado_em: new Date().toISOString() });
+      for (let i = 1; i <= n; i++) db.cobrancas.push({ id: uid(), contrato_id: id, lead_id: leadId, numero: i + 1, tipo: 'parcela', valor: vp, vencimento: null, status: 'planejada', motivo_cancelamento: null, asaas_payment_id: null, invoice_url: null, forma_paga: null, valor_pago: null, valor_liquido: null, valor_estornado: null, pago_em: null, erro: null, criado_em: new Date().toISOString() });
+      avisar('contratos'); return { ok: true, cobranca_id: cid };
+    },
+    async enviarLinkCobranca(id) { return this.reenviarLink(id); },
     async sair() { /* demo */ },
   };
 }

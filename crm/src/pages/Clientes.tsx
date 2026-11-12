@@ -15,7 +15,7 @@ function Kpi({ icon: I, lbl, val, hint, cor }: any) {
 
 export default function Clientes({ ctx }: { ctx: Ctx }) {
   const { contratos, cobrancas, comissoes, config } = ctx.snap;
-  const [servico, setServico] = useState<'limpa_nome' | 'combo' | 'rating' | 'diagnostico'>('limpa_nome');
+  const [servico, setServico] = useState<'limpa_nome' | 'combo' | 'rating' | 'diagnostico' | 'personalizada'>('limpa_nome');
   const [filtro, setFiltro] = useState('abertos');
   const [busca, setBusca] = useState('');
   const [aberto, setAberto] = useState<string | null>(null);
@@ -67,7 +67,7 @@ export default function Clientes({ ctx }: { ctx: Ctx }) {
   return (
     <div className="page">
       <div className="toolbar">
-        <div className="seg">{([['limpa_nome', 'Limpa Nome'], ['combo', 'Combo + Rating'], ['rating', 'Rating'], ['diagnostico', 'Diagnóstico']] as const).map(([k, n]) => <button key={k} className={servico === k ? 'on' : ''} onClick={() => setServico(k)}>{n}</button>)}</div>
+        <div className="seg">{([['limpa_nome', 'Limpa Nome'], ['combo', 'Combo + Rating'], ['rating', 'Rating'], ['diagnostico', 'Diagnóstico'], ['personalizada', 'Personalizadas']] as const).map(([k, n]) => <button key={k} className={servico === k ? 'on' : ''} onClick={() => setServico(k)}>{n}</button>)}</div>
         {asaasAtivo ? <span className="pill ok"><span className="dot" /> Cobrança pelo Asaas ligada{String(config.asaas_base_url?.valor || '').includes('sandbox') ? ' · SANDBOX (teste)' : ''}</span>
           : <span className="pill warn">Asaas desligado: a IA usa os links fixos e nada aparece aqui</span>}
         <button className="btn primary sm" style={{ marginLeft: 'auto' }} onClick={() => setNovo(true)} disabled={!asaasAtivo} title={asaasAtivo ? '' : 'Ligue o Asaas em Configurações'}><Plus size={14} /> Novo contrato</button>
@@ -136,7 +136,7 @@ export default function Clientes({ ctx }: { ctx: Ctx }) {
             return (
               <tr key={c.id} className="click" onClick={() => setAberto(c.id)}>
                 <td className="b">{nomeLead(c)}<div className="small muted">{telefone(c.telefone)}</div></td>
-                <td>{c.servico === 'diagnostico' ? SERVICO.diagnostico : MODALIDADE[c.modalidade]}</td>
+                <td>{c.servico === 'diagnostico' ? SERVICO.diagnostico : c.servico === 'personalizada' ? (c.descricao || 'Personalizada') : MODALIDADE[c.modalidade]}</td>
                 <td>{c.pagamentos_feitos}/{c.pagamentos_total}</td>
                 <td>{brl(c.pago)}</td><td className={c.vencido ? 'b' : ''} style={{ color: c.vencido ? 'var(--bad)' : undefined }}>{brl(c.saldo_devedor)}</td>
                 <td>{p ? <>{dia(p.vencimento)} <span className="small muted">{brl(p.valor)}</span></> : '—'}</td>
@@ -188,7 +188,7 @@ function Detalhe({ ctx, ct, etapas, fechar }: { ctx: Ctx; ct: Contrato; etapas: 
         <div className="row" style={{ alignItems: 'flex-start' }}>
           <div>
             <h3 style={{ marginBottom: 2 }}>{nomeLead(ct)}</h3>
-            <div className="small muted">{telefone(ct.telefone)}{ct.email ? ' · ' + ct.email : ''} · {ct.servico === 'diagnostico' ? 'Diagnóstico' : 'Limpa Nome · ' + MODALIDADE[ct.modalidade]} · desde {dataHora(ct.aderido_em || ct.criado_em)}</div>
+            <div className="small muted">{telefone(ct.telefone)}{ct.email ? ' · ' + ct.email : ''} · {ct.servico === 'diagnostico' ? 'Diagnóstico' : ct.servico === 'personalizada' ? (ct.descricao || 'Cobrança personalizada') : (SERVICO[ct.servico] || ct.servico) + ' · ' + MODALIDADE[ct.modalidade]} · desde {dataHora(ct.aderido_em || ct.criado_em)}</div>
           </div>
           <span className={'pill ' + st.cls} style={{ marginLeft: 'auto' }}>{st.nome}</span>
         </div>

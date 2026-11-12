@@ -48,7 +48,8 @@ export const ordemEtapa = (e: string) => FUNIL.indexOf(e as Etapa);
 // ---------------------------------------------------------------- financeiro (Asaas + split)
 export type StatusContrato = 'aguardando_pagamento' | 'ativo' | 'inadimplente' | 'quitado' | 'cancelado' | 'estornado';
 export interface Contrato {
-  id: string; lead_id: string; servico: 'diagnostico' | 'limpa_nome' | 'combo' | 'rating'; modalidade: 'avista' | '2x' | 'tap'; valor_total: number;
+  id: string; lead_id: string; servico: 'diagnostico' | 'limpa_nome' | 'combo' | 'rating' | 'personalizada'; modalidade: 'avista' | '2x' | 'tap' | 'personalizada'; valor_total: number;
+  descricao?: string | null; com_split?: boolean;
   status: StatusContrato; processo_etapa: string | null; processo_detalhe: string | null; processo_atualizado_em: string | null;
   aderido_em: string | null; quitado_em: string | null; desconto_quitacao: number | null; criado_por: string; criado_em: string;
   nome: string | null; nome_whatsapp: string | null; telefone: string; cpf_cnpj: string | null; email: string | null;
@@ -72,7 +73,7 @@ export interface Notificacao {
   tipo: 'link_pagamento' | 'lembrete' | 'vencida' | 'andamento' | 'quitacao' | 'manual'; texto: string;
   status: 'pendente' | 'enviada' | 'cancelada'; agendada_para: string; enviada_em: string | null; criado_por: string; criado_em: string;
 }
-export const MODALIDADE: Record<string, string> = { avista: 'À vista', '2x': '2x', tap: 'TAP · entrada + 5x' };
+export const MODALIDADE: Record<string, string> = { avista: 'À vista', '2x': '2x', tap: 'TAP · entrada + 5x', personalizada: 'Personalizada' };
 export const STATUS_CONTRATO: Record<StatusContrato, { nome: string; cls: string }> = {
   aguardando_pagamento: { nome: 'Aguardando 1º pagamento', cls: 'gray' }, ativo: { nome: 'Em dia', cls: 'ok' },
   inadimplente: { nome: 'Inadimplente', cls: 'bad' }, quitado: { nome: 'Quitado', cls: 'info' },

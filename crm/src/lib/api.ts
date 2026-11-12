@@ -37,6 +37,8 @@ export interface Api {
   quitar(contratoId: string, desconto: number, motivo: string): Promise<Resultado>;
   andamento(contratoId: string, etapa: string, detalhe: string, enviar: boolean): Promise<Resultado>;
   reenviarLink(cobrancaId: string): Promise<Resultado>;
+  gerarCobranca(leadId: string, dados: Record<string, any>): Promise<Resultado>;
+  enviarLinkCobranca(cobrancaId: string): Promise<Resultado>;
   sair(): Promise<void>;
 }
 
@@ -126,6 +128,8 @@ export function apiSupabase(email: string): Api {
     quitar: (id, desconto, motivo) => rpc(c, 'crm_quitar_contrato', { p_contrato: id, p_desconto: desconto, p_motivo: motivo || null }),
     andamento: (id, etapa, detalhe, enviar) => rpc(c, 'crm_andamento_processo', { p_contrato: id, p_etapa: etapa, p_detalhe: detalhe || null, p_enviar: enviar }),
     reenviarLink: (id) => rpc(c, 'crm_reenviar_link', { p_cobranca: id }),
+    gerarCobranca: (lead, dados) => rpc(c, 'crm_gerar_cobranca', { p_lead: lead, p: dados }),
+    enviarLinkCobranca: (id) => rpc(c, 'crm_enviar_link_cobranca', { p_cobranca: id }),
     async sair() { await c.auth.signOut(); },
   };
 }

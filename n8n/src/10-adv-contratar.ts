@@ -24,7 +24,7 @@ const contratar = node({
     name: 'Criar contrato',
     parameters: {
       operation: 'executeQuery',
-      query: "select public.iniciar_contratacao($1::uuid, $2, $3, 'ia', case when $4 ~ '^\\d{4}-\\d{2}-\\d{2}$' then $4::date end) as r",
+      query: "select public.iniciar_contratacao($1::uuid, $2, $3, 'ia', public.data_segura($4)) as r",
       options: { queryReplacement: expr("{{ [ $json.conversa_id, $json.servico, $json.modalidade || '', $json.vencimento || '' ] }}") }
     },
     credentials: { postgres: pgCred },
