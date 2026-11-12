@@ -46,6 +46,29 @@ const check = (r: { error: any }) => { if (r.error) throw new Error(r.error.mess
 // numeric do Postgres chega como texto: converte os campos de valor
 const NUM = ['valor', 'valor_total', 'pago', 'saldo_devedor', 'vencido', 'valor_pago', 'valor_liquido', 'valor_estornado', 'base', 'percentual', 'desconto_quitacao', 'pagamentos_feitos', 'pagamentos_total', 'custo_produto', 'custo_recuperado', 'custo_alocado'];
 const n = <T,>(o: T): T => { const x: any = { ...o }; for (const k of NUM) if (x[k] != null) x[k] = Number(x[k]); return x; };
+// o servidor entrega no máximo 1.000 linhas por consulta: busca em páginas até acabar
+const PAGINA = 1000;
+async function tudo(montar: (de: number, ate: number) => any, max: number) {
+  const linhas: any[] = [];
+  for (let de = 0; de < max; de += PAGINA) {
+    const r = await montar(de, Math.min(de + PAGINA, max) - 1);
+    if (r.error) return r;
+    linhas.push(...(r.data || []));
+    if (!r.data || r.data.length < PAGINA) break;
+  }
+  return { data: linhas, error: null };
+}
+// falha de rede (Wi-Fi oscilando, aba em segundo plano): tenta de novo antes de desistir
+async function comRetentativa<T>(f: () => Promise<T>, tentativas = 3): Promise<T> {
+  for (let i = 0; ; i++) {
+    try { return await f(); }
+    catch (e: any) {
+      const rede = e instanceof TypeError || /fetch|network|Load failed/i.test(String(e?.message));
+      if (!rede || i >= tentativas - 1) throw e;
+      await new Promise(ok => setTimeout(ok, 800 * 2 ** i));
+    }
+  }
+}
 const rpc = async (c: any, nome: string, args: any) => { const r = await c.rpc(nome, args); check(r); return (r.data || { ok: false }) as Resultado; };
 
 export function apiSupabase(email: string): Api {
@@ -55,19 +78,19 @@ export function apiSupabase(email: string): Api {
     email: () => email,
     async carregar(desde) {
       const desdeQ = desde || '2000-01-01';
-      const [leads, conversas, reunioes, eventos, alertas, config, mensagens, contratos, cobrancas, comissoes, notificacoes] = await Promise.all([
-        c.from('leads').select('*').order('criado_em', { ascending: false }).limit(5000),
-        c.from('vw_conversas').select('*').order('ultima_msg_em', { ascending: false, nullsFirst: false }).limit(1000),
-        c.from('reunioes').select('*').order('inicio', { ascending: true }).limit(2000),
-        c.from('eventos_funil').select('*').gte('criado_em', desdeQ).order('criado_em').limit(20000),
+      const [leads, conversas, reunioes, eventos, alertas, config, mensagens, contratos, cobrancas, comissoes, notificacoes] = await comRetentativa(() => Promise.all([
+        tudo((a, b) => c.from('leads').select('*').order('criado_em', { ascending: false }).order('id').range(a, b), 20000),
+        tudo((a, b) => c.from('vw_conversas').select('*').order('ultima_msg_em', { ascending: false, nullsFirst: false }).order('id').range(a, b), 20000),
+        tudo((a, b) => c.from('reunioes').select('*').order('inicio', { ascending: true }).order('id').range(a, b), 5000),
+        tudo((a, b) => c.from('eventos_funil').select('*').gte('criado_em', desdeQ).order('id').range(a, b), 50000),
         c.from('alertas').select('*').order('criado_em', { ascending: false }).limit(200),
         c.from('config').select('*'),
-        c.from('mensagens').select('autor,criado_em,conversa_id,direcao').gte('criado_em', desdeQ).limit(50000),
-        c.from('vw_contratos').select('*').order('criado_em', { ascending: false }).limit(5000),
-        c.from('cobrancas').select('*').order('numero').limit(30000),
-        c.from('comissoes').select('*').limit(60000),
+        tudo((a, b) => c.from('mensagens').select('autor,criado_em,conversa_id,direcao').gte('criado_em', desdeQ).order('id').range(a, b), 100000),
+        tudo((a, b) => c.from('vw_contratos').select('*').order('criado_em', { ascending: false }).order('id').range(a, b), 20000),
+        tudo((a, b) => c.from('cobrancas').select('*').order('id').range(a, b), 60000),
+        tudo((a, b) => c.from('comissoes').select('*').order('id').range(a, b), 100000),
         c.from('notificacoes').select('*').order('criado_em', { ascending: false }).limit(3000),
-      ]);
+      ]));
       [leads, conversas, reunioes, eventos, alertas, config, mensagens, contratos, cobrancas, comissoes, notificacoes].forEach(check);
       return {
         leads: leads.data as Lead[], conversas: conversas.data as Conversa[], reunioes: reunioes.data as Reuniao[],

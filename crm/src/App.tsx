@@ -57,14 +57,30 @@ function Shell({ api, sair }: { api: Api; sair: () => void }) {
   const timer = useRef<any>(null);
   useRotulosTabela();
 
+  // só avisa quando a falha persiste: uma tentativa perdida (rede oscilando) não mostra erro
+  const falhas = useRef(0);
+  const carregando = useRef(false);
+  const pendente = useRef(false);
   const recarregar = useCallback(() => {
-    api.carregar(null).then(s => { setSnap(s); setErro(''); }).catch(e => setErro(e.message));
+    if (carregando.current) { pendente.current = true; return; }
+    carregando.current = true;
+    api.carregar(null)
+      .then(s => { setSnap(s); setErro(''); falhas.current = 0; })
+      .catch(e => {
+        falhas.current += 1;
+        if (falhas.current >= 2) setErro(/fetch|network|Load failed/i.test(String(e?.message)) ? 'sem conexão com o servidor, tentando de novo…' : e.message);
+      })
+      .finally(() => { carregando.current = false; if (pendente.current) { pendente.current = false; setTimeout(() => recarregarRef.current(), 300); } });
   }, [api]);
+  const recarregarRef = useRef(recarregar); recarregarRef.current = recarregar;
   useEffect(() => {
     recarregar();
     const off = api.assinar(() => { clearTimeout(timer.current); timer.current = setTimeout(recarregar, 600); });
     const i1 = setInterval(recarregar, 30000); const i2 = setInterval(() => setAgora(Date.now()), 10000);
-    return () => { off(); clearInterval(i1); clearInterval(i2); };
+    // voltou para a aba ou a internet voltou: atualiza na hora
+    const volta = () => { if (document.visibilityState === 'visible') recarregar(); };
+    document.addEventListener('visibilitychange', volta); window.addEventListener('online', recarregar);
+    return () => { off(); clearInterval(i1); clearInterval(i2); document.removeEventListener('visibilitychange', volta); window.removeEventListener('online', recarregar); };
   }, [api, recarregar]);
   const toast = (t: string) => { setMsg(t); setTimeout(() => setMsg(''), 3500); };
 

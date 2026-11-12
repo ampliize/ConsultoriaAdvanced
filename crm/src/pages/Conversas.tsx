@@ -119,7 +119,7 @@ export default function Conversas({ ctx, selecionada, selecionar }: { ctx: Ctx; 
             <button className="btn primary" disabled={enviando || !texto.trim()} onClick={enviar} title="Enviar"><SendHorizontal size={16} /> <span>{enviando ? 'Enviando…' : 'Enviar'}</span></button>
           </div>
           <div className="small muted" style={{ padding: '0 16px 10px', background: 'var(--card)' }}>
-            {conv.assumida_manual || !ctx.snap.config.ia_retorno_automatico?.valor ? 'Ao responder (aqui ou pelo celular), a IA para nesta conversa e só volta quando você clicar em “Devolver para a IA”.' : `Ao responder (aqui ou pelo celular), a IA pausa nesta conversa e volta sozinha ${ctx.snap.config.minutos_retorno_humano?.valor ?? 15} min depois da sua última mensagem. Para ela não voltar, use “Assumir atendimento”.`}
+            {conv.assumida_manual || (ctx.snap.config.ia_retorno_automatico && ctx.snap.config.ia_retorno_automatico.valor !== true) ? 'Ao responder (aqui ou pelo celular), a IA para nesta conversa e só volta quando você clicar em “Devolver para a IA”.' : `Ao responder (aqui ou pelo celular), a IA pausa nesta conversa e volta sozinha ${ctx.snap.config.minutos_retorno_humano?.valor ?? 15} min depois da sua última mensagem. Para ela não voltar, use “Assumir atendimento”.`}
           </div>
         </> : <div className="empty">Selecione uma conversa.</div>}
       </div>
