@@ -75,7 +75,7 @@ const ficha = tool({
       toolDescription: 'Salva no CRM o que o lead informou. Chame sempre que ele disser nome completo, CPF/CNPJ, e-mail, endereço, objetivo, enviar o documento de identificação, quando o serviço ficar definido ou quando você deduzir a urgência. Retorna o que falta para qualificar (faltando), os dados do contrato que faltam (dados_contrato_faltando) e erros (ex.: cpf_cnpj_invalido).',
       operation: 'executeQuery',
       query: 'select public.atualizar_lead($1::uuid, $2::jsonb) as resultado',
-      options: { queryReplacement: expr("{{ [ $('Recebe lote do lead').item.json.conversa_id, $fromAI('dados', 'JSON só com os campos informados agora. Chaves possíveis: nome (nome completo), cpf_cnpj, email, endereco (endereço completo com CEP), servico (diagnostico|limpa_nome|combo|rating), objetivo (limpar_nome|buscar_credito|entender_negativa|outro), urgencia (alta|media|baixa), consentimento_lgpd (true), documento_recebido (true), resumo (1 frase com a situação do lead). Ex.: {\"nome\":\"Maria Souza Lima\",\"urgencia\":\"alta\"}', 'string') ] }}") }
+      options: { queryReplacement: expr("{{ [ $('Recebe lote do lead').item.json.conversa_id, $fromAI('dados', 'JSON só com os campos informados agora. Chaves possíveis: nome (nome completo), cpf_cnpj, email, endereco (endereço completo com CEP), servico (diagnostico|limpa_nome|combo|rating), objetivo (limpar_nome|nome_ja_limpo|buscar_credito|entender_negativa|outro), urgencia (alta|media|baixa), consentimento_lgpd (true), documento_recebido (true), resumo (1 frase com a situação do lead). Ex.: {\"nome\":\"Maria Souza Lima\",\"urgencia\":\"alta\"}', 'string') ] }}") }
     },
     credentials: { postgres: pgCred },
     position: [640, 560]

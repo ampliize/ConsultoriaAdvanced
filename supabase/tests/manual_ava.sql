@@ -60,6 +60,21 @@ begin
   assert buscar_kb_json('com quem estou falando')::text like '%Ava%', 'A5 nome';
   assert condicao_texto('limpa_nome', 'tap') like '%vence 2 dias depois que o seu nome estiver limpo%', 'A5 condição TAP';
 
+  -- A6: roteiro do atendimento avança só quando cada passo foi feito
+  r := registrar_mensagem_entrada(format(msg, 'A6-1', '5579911110006', 'false', 'Olá, Quero Limpar meu Nome.')::jsonb);
+  conv := (r->>'conversa_id')::uuid; v_lead := (r->>'lead_id')::uuid;
+  assert perfil_lead(conv)->'roteiro'->>'passo' = 'saudacao', 'A6 saudacao';
+  insert into mensagens (conversa_id, lead_id, direcao, autor, texto) values (conv, v_lead, 'out', 'ia', 'Oi! Aqui é a Ava, da Advance. Você já conhece o Limpa Nome e como funciona?');
+  assert perfil_lead(conv)->'roteiro'->>'passo' = 'explicar', 'A6 explicar';
+  insert into mensagens (conversa_id, lead_id, direcao, autor, texto) values (conv, v_lead, 'out', 'ia', 'É um processo judicial: uma liminar retira as restrições do Serasa, SPC e Boa Vista.');
+  assert perfil_lead(conv)->'roteiro'->>'passo' = 'tirar_duvidas', 'A6 dúvidas';
+  insert into mensagens (conversa_id, lead_id, direcao, autor, texto) values (conv, v_lead, 'out', 'ia', 'Ficou alguma dúvida?');
+  assert perfil_lead(conv)->'roteiro'->>'passo' = 'passar_valores', 'A6 valores';
+  insert into mensagens (conversa_id, lead_id, direcao, autor, texto) values (conv, v_lead, 'out', 'ia', '💰 Opção 1 (À Vista): R$ 597,00 à vista.');
+  assert perfil_lead(conv)->'roteiro'->>'passo' = 'fechamento', 'A6 fechamento';
+  update leads set objetivo = 'nome_ja_limpo' where id = v_lead;
+  assert perfil_lead(conv)->'roteiro'->>'passo' = 'nome_ja_limpo', 'A6 nome limpo';
+
   raise warning 'OK: testes do manual da Ava passaram';
 end $$;
 rollback;
